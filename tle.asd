@@ -3,8 +3,7 @@
   :author "Timmy Douglas <mail@timmydouglas.com>"
   :license  "MPL2"
   :version "0.0.1"
-  :depends-on ("trivial-gray-streams"
-	       "cffi")
+  :depends-on ("sdl2" "sdl2-ttf" "sdl2-image")
   :pathname "src"
   :serial t
   :components (
@@ -17,10 +16,11 @@
                (:file "editor")
                (:file "window")
 	       ;; implementation
-	       (:file "ui-sdl2")
-	       (:file "buffer-standard")
-	       (:file "editor-standard")
-	       (:file "window-standard")
+	       (:file "sdl2-font")
+	       (:file "sdl2-ui")
+	       (:file "standard-buffer")
+	       (:file "standard-editor")
+	       (:file "standard-window")
 
 	       ;; entry point
                (:file "main")
