@@ -7,7 +7,7 @@
 (defun make-standard-editor ()
   (let ((e (make-instance 'standard-editor)))
     (setf (buffers e) (list (make-standard-buffer "*scratch*")))
-    (setf (windows e) (make-standard-window (first (buffers e))))
+    (setf (windows e) (list (make-standard-window (first (buffers e)))))
     e))
 
 (defmethod editor-windows ((editor standard-editor))

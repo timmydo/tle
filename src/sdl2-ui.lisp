@@ -6,69 +6,106 @@
    (%font :initform nil :accessor sdl-font))
   (:documentation "A UI implementation"))
 
+(defstruct sdl-context
+  window
+  renderer
+  texture)
+
 
 (defun make-sdl2-ui ()
   (make-instance 'sdl2-ui))
+
+(defun initialize-editor-windows (windows)
+  (dolist (w windows)
+    (let* ((window (sdl2:create-window :title "TLE" :w 800 :h 600 :flags '(:shown :resizable)))
+	   (renderer (sdl2:create-renderer window nil '(:accelerated)))
+	   (ctx (make-sdl-context :window window :renderer renderer)))
+      (setf (window-handle w) ctx))))
+
+(defun destroy-editor-windows (windows)
+  (dolist (w windows)
+    (let* ((handle (window-handle w))
+	   (renderer (sdl-context-renderer handle))
+	   (win (sdl-context-window handle))
+	   (texture (sdl-context-texture handle)))
+      (when texture
+	(format t "destroy texture ~S~%" texture)
+	(sdl2:destroy-texture texture))
+      (when renderer
+	(format t "destroy renderer ~S~%" renderer)
+	(sdl2:destroy-renderer renderer))
+      (when win
+	(format t "destroy win ~S~%" win)
+	(sdl2:destroy-window win)))))
+
+(defun paint-editor-windows (ui windows)
+  (dolist (w windows)
+    (paint-window ui w)))
+
+(defun paint-window (ui window)
+  (let* ((ctx (window-handle window))
+	 (renderer (sdl-context-renderer ctx)))
+    (unless (sdl-context-texture ctx)
+      (setf (sdl-context-texture ctx)
+	    (let* ((surface (sdl2-ttf:render-utf8-blended (font-latin-normal-font (sdl-font ui))
+							  "hello world"
+							  255
+							  255
+							  255
+							  0))
+		   (texture (sdl2:create-texture-from-surface renderer surface)))
+	      (sdl2:free-surface surface)
+	      texture)))
+    
+    (let* ((texture (sdl-context-texture ctx))
+	   (destination-rect (sdl2:make-rect (round (- 150 (/ (sdl2:texture-width texture) 2.0)))
+					    (round (- 150 (/ (sdl2:texture-height texture) 2.0)))
+					    (sdl2:texture-width texture)
+					    (sdl2:texture-height texture))))
+      
+
+      ;; paint
+      (sdl2:set-render-draw-color renderer 0 0 0 255)
+      (sdl2:render-clear renderer)
+      (sdl2:render-copy renderer texture :source-rect (cffi:null-pointer) :dest-rect destination-rect)
+      (sdl2:render-present renderer)
+      )))
 
 (defmethod run-ui ((ui sdl2-ui) (editor editor))
   (sdl2:with-init (:everything)
     (sdl2-ttf:init)
     (unwind-protect
-	 (sdl2:with-window (the-window :title "Timmy's Lisp Environment" :w 800 :h 600 :flags '(:shown :resizable))
-	   (sdl2:with-renderer (my-renderer the-window :flags '(:accelerated))
-             (let* ((font (sdl2-open-font))
-		    (hello-text (let* ((surface (sdl2-ttf:render-utf8-blended (font-latin-normal-font font)
-									      "hello world"
-									      255
-									      255
-									      255
-									      0))
-                                       (texture (sdl2:create-texture-from-surface my-renderer
-										  surface)))
-				  (sdl2:free-surface surface)
-				  texture))
-		    (destination-rect (sdl2:make-rect (round (- 150 (/ (sdl2:texture-width hello-text) 2.0)))
-						      (round (- 150 (/ (sdl2:texture-height hello-text) 2.0)))
-						      (sdl2:texture-width hello-text)
-						      (sdl2:texture-height hello-text))))
-	       (setf (sdl-font ui) font)
-               (flet ((text-renderer (renderer)
-			(sdl2:render-copy renderer
-					  hello-text
-					  :source-rect (cffi:null-pointer)
-					  :dest-rect destination-rect))
-                      (clear-renderer (renderer)
-			(sdl2:set-render-draw-color renderer 0 0 0 255)
-			(sdl2:render-clear renderer)))
-		 (sdl2:with-event-loop (:method :poll)
-		   (:idle ()
-			  (clear-renderer my-renderer)
-			  (text-renderer my-renderer)
-			  (sdl2:render-present my-renderer)
-			  (sleep (/ 1 60)))
-		   (:textinput (:text text)
-			       (on-textinput ui text))
-		   (:textediting (:text text)
-				 (on-textediting ui text))
-		   (:keydown (:keysym keysym)
-			     (on-keydown ui (keysym-to-sdl2-key-event keysym)))
-		   (:keyup (:keysym keysym)
-			   (on-keyup ui (keysym-to-sdl2-key-event keysym)))
-		   (:mousebuttondown (:button button :x x :y y :clicks clicks)
-				     (on-mouse-button-down ui button x y clicks))
-		   (:mousebuttonup (:button button :x x :y y)
-				   (on-mouse-button-up ui button x y))
-		   (:mousemotion (:x x :y y :state state)
-				 (on-mouse-motion ui x y state))
-		   (:mousewheel (:x x :y y :which which :direction direction)
-				(on-mouse-wheel ui x y which direction))
-		   (:windowevent (:event event)
-				 (on-windowevent ui event))
-		   (:quit ()
-			  (when (> (sdl2-ttf:was-init) 0)
-			    (sdl2-close-font font)
-			    (sdl2:destroy-texture hello-text))
-			  t))))))
+	 (let ((font (sdl2-open-font)))
+	   (setf (sdl-font ui) font)
+	   (initialize-editor-windows (editor-windows editor))
+	   (sdl2:with-event-loop (:method :poll)
+	     (:idle ()
+		    (paint-editor-windows ui (editor-windows editor))
+		    (sleep (/ 1 60)))
+	     (:textinput (:text text)
+			 (on-textinput ui text))
+	     (:textediting (:text text)
+			   (on-textediting ui text))
+	     (:keydown (:keysym keysym)
+		       (on-keydown ui (keysym-to-sdl2-key-event keysym)))
+	     (:keyup (:keysym keysym)
+		     (on-keyup ui (keysym-to-sdl2-key-event keysym)))
+	     (:mousebuttondown (:button button :x x :y y :clicks clicks)
+			       (on-mouse-button-down ui button x y clicks))
+	     (:mousebuttonup (:button button :x x :y y)
+			     (on-mouse-button-up ui button x y))
+	     (:mousemotion (:x x :y y :state state)
+			   (on-mouse-motion ui x y state))
+	     (:mousewheel (:x x :y y :which which :direction direction)
+			  (on-mouse-wheel ui x y which direction))
+	     (:windowevent (:event event)
+			   (on-windowevent ui event))
+	     (:quit ()
+		    (format t "quitting~%")
+		    (sdl2-close-font font)
+		    t)))
+      (destroy-editor-windows (editor-windows editor))
+      
       (sdl2-ttf:quit))))
 
 (defun char-width (ui)
@@ -124,22 +161,22 @@
     (setf sym "\\"))
   (cond ((and ctrl (equal sym "i"))
          (make-key :ctrl nil
-                       :meta meta
-                       :super super
-                       :shift shift
-                       :sym "Tab"))
+                   :meta meta
+                   :super super
+                   :shift shift
+                   :sym "Tab"))
         ((and ctrl (equal sym "m"))
          (make-key :ctrl nil
-                       :meta meta
-                       :super super
-                       :shift shift
-                       :sym "Return"))
+                   :meta meta
+                   :super super
+                   :shift shift
+                   :sym "Return"))
         (t
          (make-key :ctrl ctrl
-                       :meta meta
-                       :super super
-                       :shift shift
-                       :sym sym))))
+                   :meta meta
+                   :super super
+                   :shift shift
+                   :sym sym))))
 
 (defstruct modifier
   shift
@@ -193,17 +230,17 @@
 
 (defun on-windowevent (ui event)
   #+nil(alexandria:switch (event)
-    (sdl2-ffi:+sdl-windowevent-shown+
-     (notify-required-redisplay))
-    (sdl2-ffi:+sdl-windowevent-exposed+
-     (notify-required-redisplay))
-    (sdl2-ffi:+sdl-windowevent-resized+
-     (update-texture *display*)
-     (notify-required-redisplay))
-    (sdl2-ffi:+sdl-windowevent-focus-gained+
-     (setf (display-focus-p *display*) t))
-    (sdl2-ffi:+sdl-windowevent-focus-lost+
-     (setf (display-focus-p *display*) nil)))
+	 (sdl2-ffi:+sdl-windowevent-shown+
+	  (notify-required-redisplay))
+	 (sdl2-ffi:+sdl-windowevent-exposed+
+	  (notify-required-redisplay))
+	 (sdl2-ffi:+sdl-windowevent-resized+
+	  (update-texture *display*)
+	  (notify-required-redisplay))
+	 (sdl2-ffi:+sdl-windowevent-focus-gained+
+	  (setf (display-focus-p *display*) t))
+	 (sdl2-ffi:+sdl-windowevent-focus-lost+
+	  (setf (display-focus-p *display*) nil)))
   (format t "window event ~S~%" event)
   )
 
@@ -229,7 +266,7 @@
                 ((eql button 4) :button-4)))
         (x (floor x (char-width ui)))
         (y (floor y (char-height ui))))
-                     (format t "receive-mouse-button-up ~S ~S ~S~%" x y button)))
+    (format t "receive-mouse-button-up ~S ~S ~S~%" x y button)))
 
 (defun on-mouse-motion (ui x y state)
   (show-cursor)
@@ -238,7 +275,7 @@
                     nil)))
     (let ((x (floor x (char-width ui)))
           (y (floor y (char-height ui))))
-                      (format t "receive-mouse-motion ~S ~S ~S ~%" x y button))))
+      (format t "receive-mouse-motion ~S ~S ~S ~%" x y button))))
 
 (defun on-mouse-wheel (ui wheel-x wheel-y which direction)
   (declare (ignore which direction))
@@ -247,7 +284,7 @@
     (let ((x (floor x (char-width ui)))
           (y (floor y (char-height ui))))
       (format t "receive-mouse-wheel ~S ~S ~S ~S~%" x y wheel-x wheel-y)
-      ; redraw?
+					; redraw?
       )))
 
 (defun on-textediting (ui text)

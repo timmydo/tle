@@ -10,7 +10,7 @@
 
 (defun make-standard-buffer (name)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #(""))
+    (setf (lines buf) #("line 1" "line 2" "line 3"))
     (setf (point buf) (cons 0 0))
     (setf (mark buf) nil)
     (setf (buffer-name buf) name)
