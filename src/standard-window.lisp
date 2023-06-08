@@ -3,20 +3,23 @@
 (defclass standard-window (window)
   ((%views :accessor views)))
 
-(defclass buffer-view (window)
-  ((%view-start :accessor view-start)
-   (%lines-displayed :accessor lines-displayed)))
-
 
 (defun make-standard-window (buffer)
   (let ((e (make-instance 'standard-window))
-	(view (make-instance 'buffer-view)))
+	(view (make-instance 'standard-view)))
     (setf (view-start view) 0)
-    (setf (lines-displayed view) 100) ;; fixme
-    (setf (views e) (list buffer))
+    (setf (point view) (cons 0 0))
+    (setf (mark view) nil)
+    (setf (buffer view) buffer)
+    (setf (views e) (list view))
     e))
 
-(defmethod draw-window ((window standard-window))
-  
-  )
+
+;; simple window ... only display one buffer now
+(defmethod draw-window ((window standard-window) (ui ui-implementation))
+  (multiple-value-bind (width height) (ui-window-size window ui)
+    (draw-view (first (views window))
+		      (make-rect :x 0 :y 0 :width width :height height)
+		      window)))
+
 

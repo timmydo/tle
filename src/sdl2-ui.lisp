@@ -40,36 +40,42 @@
 
 (defun paint-editor-windows (ui windows)
   (dolist (w windows)
-    (paint-window ui w)))
+    (draw-window ui w)))
+
+(defmethod get-window-size (window (ui sdl2-ui))
+  (sdl2:get-window-size (sdl-context-window (window-handle window))))
 
 (defun paint-window (ui window)
   (let* ((ctx (window-handle window))
-	 (renderer (sdl-context-renderer ctx)))
-    (unless (sdl-context-texture ctx)
-      (setf (sdl-context-texture ctx)
-	    (let* ((surface (sdl2-ttf:render-utf8-blended (font-latin-normal-font (sdl-font ui))
-							  "hello world"
-							  255
-							  255
-							  255
-							  0))
-		   (texture (sdl2:create-texture-from-surface renderer surface)))
-	      (sdl2:free-surface surface)
-	      texture)))
-    
-    (let* ((texture (sdl-context-texture ctx))
-	   (destination-rect (sdl2:make-rect (round (- 150 (/ (sdl2:texture-width texture) 2.0)))
-					    (round (- 150 (/ (sdl2:texture-height texture) 2.0)))
-					    (sdl2:texture-width texture)
-					    (sdl2:texture-height texture))))
+	 (renderer (sdl-context-renderer ctx))
+	 (sdlwin (sdl-context-window ctx)))
+    (multiple-value-bind (width height) (sdl2:get-window-size sdlwin)
+      (format t "win width ~S height ~S ~%" width height)
+      (unless (sdl-context-texture ctx)
+	(setf (sdl-context-texture ctx)
+	      (let* ((surface (sdl2-ttf:render-utf8-blended (font-latin-normal-font (sdl-font ui))
+							    "hello world"
+							    255
+							    255
+							    255
+							    0))
+		     (texture (sdl2:create-texture-from-surface renderer surface)))
+		(sdl2:free-surface surface)
+		texture)))
       
+      (let* ((texture (sdl-context-texture ctx))
+	     (destination-rect (sdl2:make-rect (round (- 150 (/ (sdl2:texture-width texture) 2.0)))
+					       (round (- 150 (/ (sdl2:texture-height texture) 2.0)))
+					       (sdl2:texture-width texture)
+					       (sdl2:texture-height texture))))
+	
 
-      ;; paint
-      (sdl2:set-render-draw-color renderer 0 0 0 255)
-      (sdl2:render-clear renderer)
-      (sdl2:render-copy renderer texture :source-rect (cffi:null-pointer) :dest-rect destination-rect)
-      (sdl2:render-present renderer)
-      )))
+	;; paint
+	(sdl2:set-render-draw-color renderer 0 0 0 255)
+	(sdl2:render-clear renderer)
+	(sdl2:render-copy renderer texture :source-rect (cffi:null-pointer) :dest-rect destination-rect)
+	(sdl2:render-present renderer)
+	))))
 
 (defmethod run-ui ((ui sdl2-ui) (editor editor))
   (sdl2:with-init (:everything)

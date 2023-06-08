@@ -1,11 +1,22 @@
 (in-package :tle)
 
+(defstruct rect x y width height)
 
 (defclass ui-implementation ()
   ((name :initarg :name :reader name))
   (:documentation "A UI implementation"))
 
 (defgeneric run-ui (ui-implementation editor))
+
+(defgeneric ui-window-size (window ui)
+  (:documentation "return values for width and height"))
+
+(defgeneric ui-draw-text (window ui text rect)
+  (:documentation "use UI to draw TEXT on WINDOW starting at X,Y within
+WIDTH,HEIGHT (end of screen) and return the values WIDTH,HEIGHT of
+text drawn"))
+
+
 
 
 (defparameter *named-key-syms*

@@ -22,12 +22,3 @@
 (defgeneric buffer-redo (buffer)
   (:documentation "Redo a change to a buffer"))
 
-(defgeneric buffer-move-forward (buffer amount)
-  (:documentation "Move the cursor in a buffer"))
-
-(defgeneric buffer-move-down (buffer amount)
-  (:documentation "Move the cursor in a buffer"))
-
-(defgeneric buffer-mark (buffer)
-  (:documentation "Toggle the mark point in a buffer"))
-
