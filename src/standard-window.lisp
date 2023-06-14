@@ -7,10 +7,9 @@
 (defun make-standard-window (buffer)
   (let ((e (make-instance 'standard-window))
 	(view (make-instance 'standard-view)))
-    (setf (view-start view) 0)
-    (setf (point view) (cons 0 0))
-    (setf (mark view) nil)
-    (setf (buffer view) buffer)
+    (setf (view-point view) (cons 0 0))
+    (setf (view-mark view) nil)
+    (setf (view-buffer view) buffer)
     (setf (views e) (list view))
     e))
 
@@ -20,6 +19,7 @@
   (multiple-value-bind (width height) (ui-window-size window ui)
     (draw-view (first (views window))
 		      (make-rect :x 0 :y 0 :width width :height height)
-		      window)))
+		      window
+		      ui)))
 
 

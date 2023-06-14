@@ -16,7 +16,8 @@
 WIDTH,HEIGHT (end of screen) and return the values WIDTH,HEIGHT of
 text drawn"))
 
-
+(defgeneric ui-character-height (window ui)
+  (:documentation "The height of text for the given WINDOW using UI"))
 
 
 (defparameter *named-key-syms*

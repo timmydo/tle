@@ -40,17 +40,47 @@
 
 (defun paint-editor-windows (ui windows)
   (dolist (w windows)
-    (draw-window ui w)))
+      (let* ((ctx (window-handle w))
+	     (renderer (sdl-context-renderer ctx))
+	     (sdlwin (sdl-context-window ctx)))
+	(sdl2:set-render-draw-color renderer 0 0 0 255)
+	(sdl2:render-clear renderer)
+	(draw-window w ui)
+	(sdl2:render-present renderer)
+	)))
 
-(defmethod get-window-size (window (ui sdl2-ui))
+(defmethod ui-window-size (window (ui sdl2-ui))
   (sdl2:get-window-size (sdl-context-window (window-handle window))))
+
+(defmethod ui-draw-text (window (ui sdl2-ui) text rect)
+  ;; (format t "ui-draw-text ~S ~S ~S ~S ~%" window ui text rect)
+  (values (length text) 10)
+  (let* ((ctx (window-handle window))
+	 (renderer (sdl-context-renderer ctx))
+	 (surface (sdl2-ttf:render-utf8-blended (font-latin-normal-font (sdl-font ui))
+						text
+						255
+						255
+						255
+						0))
+	 (texture (sdl2:create-texture-from-surface renderer surface))
+	 (render-width (sdl2:texture-width texture))
+	 (render-height (sdl2:texture-height texture))
+	 (destination-rect (sdl2:make-rect (rect-x rect)
+					   (rect-y rect)
+					   (min render-width (rect-width rect))
+					   (min render-height (rect-height rect)))))
+    (sdl2:free-surface surface)
+    (sdl2:render-copy renderer texture :source-rect (cffi:null-pointer) :dest-rect destination-rect)
+    (sdl2:destroy-texture texture)
+    (values render-width render-height)))
 
 (defun paint-window (ui window)
   (let* ((ctx (window-handle window))
 	 (renderer (sdl-context-renderer ctx))
 	 (sdlwin (sdl-context-window ctx)))
     (multiple-value-bind (width height) (sdl2:get-window-size sdlwin)
-      (format t "win width ~S height ~S ~%" width height)
+      ;; (format t "win width ~S height ~S ~%" width height)
       (unless (sdl-context-texture ctx)
 	(setf (sdl-context-texture ctx)
 	      (let* ((surface (sdl2-ttf:render-utf8-blended (font-latin-normal-font (sdl-font ui))
@@ -119,6 +149,9 @@
 
 (defun char-height (ui)
   (font-char-height (sdl-font ui)))
+
+(defmethod ui-character-height (window (ui sdl2-ui))
+   (font-char-height (sdl-font ui)))
 
 (defstruct (keyinfo (:type list))
   keycode
