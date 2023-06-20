@@ -52,6 +52,31 @@
 (defmethod ui-window-size (window (ui sdl2-ui))
   (sdl2:get-window-size (sdl-context-window (window-handle window))))
 
+(defmethod ui-draw-selection (window (ui sdl2-ui) rect)
+  (let* ((ctx (window-handle window))
+	 (renderer (sdl-context-renderer ctx))
+	 (sdl-rect (sdl2:make-rect (rect-x rect)
+				   (rect-y rect)
+				   (rect-width rect)
+				   (rect-height rect))))
+    (format t "draw selection ~S~%" rect)
+    ;; fixme selection color
+    (sdl2:set-render-draw-color renderer 0 220 220 255)
+    (sdl2:render-fill-rect renderer sdl-rect)))
+
+(defmethod ui-draw-cursor (window (ui sdl2-ui) rect)
+  (let* ((ctx (window-handle window))
+	 (renderer (sdl-context-renderer ctx))
+	 (sdl-rect (sdl2:make-rect (rect-x rect)
+				   (rect-y rect)
+				   (rect-width rect)
+				   (rect-height rect))))
+    (format t "draw cursor ~S~%" rect)
+    ;; fixme cursor-color
+    (sdl2:set-render-draw-color renderer 0 220 0 255)
+    (sdl2:render-fill-rect renderer sdl-rect)))
+
+
 (defmethod ui-draw-text (window (ui sdl2-ui) text rect)
   ;; (format t "ui-draw-text ~S ~S ~S ~S ~%" window ui text rect)
   (values (length text) 10)
@@ -160,6 +185,9 @@
 
 (defmethod ui-character-height (window (ui sdl2-ui))
    (font-char-height (sdl-font ui)))
+
+(defmethod ui-character-width (window (ui sdl2-ui))
+   (font-char-width (sdl-font ui)))
 
 (defstruct (keyinfo (:type list))
   keycode

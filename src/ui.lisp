@@ -16,8 +16,18 @@
 WIDTH,HEIGHT (end of screen) and return the values WIDTH,HEIGHT of
 text drawn"))
 
+(defgeneric ui-draw-selection (window ui rect)
+  (:documentation "use UI to draw text selection on WINDOW given RECT"))
+
+(defgeneric ui-draw-cursor (window ui rect)
+  (:documentation "use UI to draw cursor on WINDOW given RECT"))
+
+
 (defgeneric ui-character-height (window ui)
   (:documentation "The height of text for the given WINDOW using UI"))
+
+(defgeneric ui-character-width (window ui)
+  (:documentation "The width of text for the given WINDOW using UI"))
 
 
 (defparameter *named-key-syms*
