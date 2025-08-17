@@ -29,6 +29,41 @@
             margin: 0; 
             padding: 0; 
             overflow: hidden; 
+            position: relative;
+        }
+        .window {
+            position: absolute;
+            background-color: #3e4451;
+            border: 1px solid #5c6370;
+            border-radius: 4px;
+            min-width: 200px;
+            min-height: 100px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .window-header {
+            background-color: #4b5263;
+            padding: 8px 12px;
+            cursor: move;
+            border-bottom: 1px solid #5c6370;
+            user-select: none;
+            font-weight: bold;
+        }
+        .window-content {
+            padding: 10px;
+            white-space: pre;
+            font-size: 16px;
+            line-height: 1.4;
+            overflow: auto;
+            height: calc(100% - 40px);
+        }
+        .window-resizer {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 10px;
+            height: 10px;
+            cursor: se-resize;
+            background: linear-gradient(-45deg, transparent 30%, #5c6370 30%, #5c6370 70%, transparent 70%);
         }
         #editor { 
             white-space: pre; 
@@ -39,9 +74,76 @@
     </style>
 </head>
 <body>
-    <div id=\"editor\">Hello World</div>
+    <div id=\"app-container\">~A</div>
     <script>
         let eventSource = null;
+        let draggedWindow = null;
+        let dragOffset = {x: 0, y: 0};
+        let resizedWindow = null;
+        
+        function makeWindowDraggable(windowElement) {
+            const header = windowElement.querySelector('.window-header');
+            const resizer = windowElement.querySelector('.window-resizer');
+            
+            header.addEventListener('mousedown', startDrag);
+            resizer.addEventListener('mousedown', startResize);
+        }
+        
+        function startDrag(e) {
+            draggedWindow = e.target.closest('.window');
+            const rect = draggedWindow.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+            e.preventDefault();
+        }
+        
+        function drag(e) {
+            if (!draggedWindow) return;
+            
+            const x = e.clientX - dragOffset.x;
+            const y = e.clientY - dragOffset.y;
+            
+            draggedWindow.style.left = Math.max(0, x) + 'px';
+            draggedWindow.style.top = Math.max(0, y) + 'px';
+        }
+        
+        function stopDrag() {
+            draggedWindow = null;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+        
+        function startResize(e) {
+            resizedWindow = e.target.closest('.window');
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResize);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function resize(e) {
+            if (!resizedWindow) return;
+            
+            const rect = resizedWindow.getBoundingClientRect();
+            const width = e.clientX - rect.left;
+            const height = e.clientY - rect.top;
+            
+            resizedWindow.style.width = Math.max(200, width) + 'px';
+            resizedWindow.style.height = Math.max(100, height) + 'px';
+        }
+        
+        function stopResize() {
+            resizedWindow = null;
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+        
+        function initializeWindows() {
+            document.querySelectorAll('.window').forEach(makeWindowDraggable);
+        }
         
         function connectEventSource() {
             eventSource = new EventSource('/events');
@@ -54,7 +156,8 @@
             eventSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
                 if (data.type === 'update') {
-                    document.getElementById('editor').innerHTML = data.content;
+                    document.getElementById('app-container').innerHTML = data.content;
+                    initializeWindows();
                 }
             };
             
@@ -93,6 +196,7 @@
         });
         
         connectEventSource();
+        initializeWindows();
     </script>
 </body>
 </html>")
@@ -104,6 +208,36 @@
     (setf escaped (substitute-string escaped "<" "&lt;"))
     (setf escaped (substitute-string escaped ">" "&gt;"))
     escaped))
+
+(defmethod render-application ((app application))
+  "Render an application as HTML with all its frames as draggable windows."
+  (let ((frames (application-frames app))
+        (editor (application-editor app)))
+    (if (null frames)
+        ;; If no frames, create a default window with the current buffer
+        (let* ((buffer (when editor (current-buffer editor)))
+               (content (if buffer (escape-html (get-buffer-text buffer)) "No content")))
+          (format nil "<div class=\"window\" style=\"left: 50px; top: 50px; width: 600px; height: 400px;\">
+  <div class=\"window-header\">~A - Buffer</div>
+  <div class=\"window-content\">~A</div>
+  <div class=\"window-resizer\"></div>
+</div>" (application-name app) content))
+        ;; Render all frames as windows
+        (let ((window-html "")
+              (x-offset 50)
+              (y-offset 50))
+          (dolist (frame frames)
+            (let ((frame-content (escape-html (format nil "Frame: ~A" frame))))
+              (setf window-html
+                    (concatenate 'string window-html
+                                 (format nil "<div class=\"window\" style=\"left: ~Apx; top: ~Apx; width: 400px; height: 300px;\">
+  <div class=\"window-header\">Frame ~A</div>
+  <div class=\"window-content\">~A</div>
+  <div class=\"window-resizer\"></div>
+</div>" x-offset y-offset frame frame-content)))
+              (incf x-offset 30)
+              (incf y-offset 30)))
+          window-html))))
 
 (defun substitute-string (string old new)
   "Simple string substitution function."
@@ -213,7 +347,9 @@
 (defun send-html-response (client-stream &optional (app-name *default-application-name*))
   "Send HTML page response."
   (format t "Sending HTML response for app: ~A~%" app-name)
-  (let* ((html-content *html-template*)
+  (let* ((app (get-application app-name))
+         (rendered-content (if app (render-application app) "<div id=\"editor\">No application found</div>"))
+         (html-content (format nil *html-template* rendered-content))
          (content-length (length html-content))
          (response (format nil "HTTP/1.1 200 OK~C~AContent-Type: text/html~C~AContent-Length: ~A~C~AConnection: close~C~A~C~A~A"
                           #\Return #\Linefeed #\Return #\Linefeed content-length #\Return #\Linefeed #\Return #\Linefeed #\Return #\Linefeed html-content)))
@@ -273,13 +409,11 @@
   (force-output client-stream))
 
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
-  "Send current buffer content to client via SSE."
+  "Send current application content to client via SSE."
   (let ((app (get-application app-name)))
-    (when (and app (application-editor app))
-      (let* ((buffer (current-buffer (application-editor app)))
-             (text (get-buffer-text buffer))
-             (escaped-text (escape-html text))
-             (response (jsown:to-json (jsown:new-js ("type" "update") ("content" escaped-text)))))
+    (when app
+      (let* ((rendered-content (render-application app))
+             (response (jsown:to-json (jsown:new-js ("type" "update") ("content" rendered-content)))))
         (ignore-errors
           (format client-stream "data: ~A~%~%" response)
           (force-output client-stream))))))
