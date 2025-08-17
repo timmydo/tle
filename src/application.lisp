@@ -66,6 +66,17 @@
     (when app
       (setf (application-editor app) editor))))
 
+(defun create-sample-frames (app-name)
+  "Create sample frames for testing the application."
+  (let ((app (get-application app-name)))
+    (when app
+      (let* ((editor (application-editor app))
+             (buffer (when editor (current-buffer editor)))
+             (frame1 (make-standard-frame buffer :title "Main Buffer" :x 50 :y 50 :width 500 :height 400))
+             (frame2 (make-standard-frame buffer :title "Secondary View" :x 600 :y 100 :width 400 :height 300)))
+        (setf (application-frames app) (list frame1 frame2))
+        app))))
+
 ;; Export key functions for external use
 (export '(application
           application-name

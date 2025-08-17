@@ -111,6 +111,16 @@
         }
         
         function stopDrag() {
+            if (draggedWindow) {
+                const frameId = draggedWindow.dataset.frameId;
+                const rect = draggedWindow.getBoundingClientRect();
+                sendFrameUpdate(frameId, {
+                    x: parseInt(draggedWindow.style.left),
+                    y: parseInt(draggedWindow.style.top),
+                    width: parseInt(draggedWindow.style.width) || rect.width,
+                    height: parseInt(draggedWindow.style.height) || rect.height
+                });
+            }
             draggedWindow = null;
             document.removeEventListener('mousemove', drag);
             document.removeEventListener('mouseup', stopDrag);
@@ -136,6 +146,16 @@
         }
         
         function stopResize() {
+            if (resizedWindow) {
+                const frameId = resizedWindow.dataset.frameId;
+                const rect = resizedWindow.getBoundingClientRect();
+                sendFrameUpdate(frameId, {
+                    x: parseInt(resizedWindow.style.left) || rect.left,
+                    y: parseInt(resizedWindow.style.top) || rect.top,
+                    width: parseInt(resizedWindow.style.width),
+                    height: parseInt(resizedWindow.style.height)
+                });
+            }
             resizedWindow = null;
             document.removeEventListener('mousemove', resize);
             document.removeEventListener('mouseup', stopResize);
@@ -180,6 +200,20 @@
             });
         }
         
+        function sendFrameUpdate(frameId, position) {
+            fetch('/frame-update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    frameId: frameId,
+                    x: position.x,
+                    y: position.y,
+                    width: position.width,
+                    height: position.height
+                })
+            });
+        }
+        
         document.addEventListener('keydown', (e) => {
             e.preventDefault();
             let key = e.key;
@@ -216,27 +250,32 @@
     (if (null frames)
         ;; If no frames, create a default window with the current buffer
         (let* ((buffer (when editor (current-buffer editor)))
-               (content (if buffer (escape-html (get-buffer-text buffer)) "No content")))
-          (format nil "<div class=\"window\" style=\"left: 50px; top: 50px; width: 600px; height: 400px;\">
+               (content (if buffer (escape-html (get-buffer-text buffer)) "No content"))
+               (frame-id "default-frame"))
+          (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: 50px; top: 50px; width: 600px; height: 400px;\">
   <div class=\"window-header\">~A - Buffer</div>
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
-</div>" (application-name app) content))
-        ;; Render all frames as windows
-        (let ((window-html "")
-              (x-offset 50)
-              (y-offset 50))
+</div>" frame-id (application-name app) content))
+        ;; Render all frames as windows using their stored coordinates
+        (let ((window-html ""))
           (dolist (frame frames)
-            (let ((frame-content (escape-html (format nil "Frame: ~A" frame))))
+            (let* ((frame-content (if (typep frame 'standard-frame)
+                                     (escape-html (get-buffer-text (frame-buffer frame)))
+                                     (escape-html (format nil "Frame: ~A" frame))))
+                   (frame-id (symbol-name (frame-id frame)))
+                   (title (if (typep frame 'standard-frame) (frame-title frame) "Frame"))
+                   (x (if (typep frame 'standard-frame) (frame-x frame) 50))
+                   (y (if (typep frame 'standard-frame) (frame-y frame) 50))
+                   (width (if (typep frame 'standard-frame) (frame-width frame) 400))
+                   (height (if (typep frame 'standard-frame) (frame-height frame) 300)))
               (setf window-html
                     (concatenate 'string window-html
-                                 (format nil "<div class=\"window\" style=\"left: ~Apx; top: ~Apx; width: 400px; height: 300px;\">
-  <div class=\"window-header\">Frame ~A</div>
+                                 (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx;\">
+  <div class=\"window-header\">~A</div>
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
-</div>" x-offset y-offset frame frame-content)))
-              (incf x-offset 30)
-              (incf y-offset 30)))
+</div>" frame-id x y width height title frame-content)))))
           window-html))))
 
 (defun substitute-string (string old new)
@@ -335,6 +374,9 @@
                     ((and (string= method "POST") (string= path "/update"))
                      (handle-update-post client-stream app-name)
                      :close)
+                    ((and (string= method "POST") (string= path "/frame-update"))
+                     (handle-frame-update-post client-stream body app-name)
+                     :close)
                     (t
                      (send-404-response client-stream)
                      :close)))))
@@ -408,6 +450,22 @@
   (format client-stream "~%")
   (force-output client-stream))
 
+(defun handle-frame-update-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle frame position/size update request."
+  (when body
+    (let* ((data (jsown:parse body))
+           (frame-id (jsown:val data "frameId"))
+           (x (jsown:val data "x"))
+           (y (jsown:val data "y"))
+           (width (jsown:val data "width"))
+           (height (jsown:val data "height")))
+      (update-frame-position-and-size app-name frame-id x y width height)))
+  
+  (format client-stream "HTTP/1.1 200 OK~%")
+  (format client-stream "Content-Length: 0~%")
+  (format client-stream "~%")
+  (force-output client-stream))
+
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."
   (let ((app (get-application app-name)))
@@ -423,6 +481,18 @@
   (when *web-ui-instance*
     (dolist (client (client-connections *web-ui-instance*))
       (ignore-errors (send-content-update client app-name)))))
+
+(defun update-frame-position-and-size (app-name frame-id x y width height)
+  "Update frame position and size in the application."
+  (let ((app (get-application app-name)))
+    (when app
+      (dolist (frame (application-frames app))
+        (when (string= (symbol-name (frame-id frame)) frame-id)
+          (update-frame-position frame x y)
+          (update-frame-size frame width height)
+          (format t "Updated frame ~A: position (~A,~A) size (~A,~A)~%" 
+                  frame-id x y width height)
+          (return))))))
 
 (defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."
@@ -463,7 +533,9 @@
   (let ((default-app (make-instance 'application 
                                     :name *default-application-name*
                                     :editor editor)))
-    (setf (gethash *default-application-name* *applications*) default-app))
+    (setf (gethash *default-application-name* *applications*) default-app)
+    ;; Create sample frames for testing
+    (create-sample-frames *default-application-name*))
   (start-server 8080)
   (format t "~%Your TLE application is now running.~%")
   (format t "Please open your web browser to http://localhost:8080~%")

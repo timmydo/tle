@@ -14,7 +14,7 @@
                (:file "ui") ;; ui toolkit
                (:file "buffer") ;; a list of lines of text
                (:file "editor") ;; total editor state. list of buffers and windows.
-               (:file "window") ;; a window displayed by the ui
+               (:file "frame") ;; a frame displayed by the ui
                (:file "view") ;; a buffer with scroll position, point/mark
                (:file "application") ;; application with frames and editor
 	       ;; implementation
