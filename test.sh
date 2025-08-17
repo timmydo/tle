@@ -12,24 +12,21 @@ TLE_PID=$!
 echo "Waiting for server to start..."
 sleep 5
 
-# Test 1: Basic HTTP GET request
-echo "Test 1: Testing basic HTTP GET request to /"
-RESPONSE=$(curl -s -w "%{http_code}" http://localhost:8080/)
-HTTP_CODE=$(echo "$RESPONSE" | tail -c 4)
-BODY=$(echo "$RESPONSE" | head -c -4)
+# Run all tests in tests/ directory
+TESTS_PASSED=0
+TESTS_FAILED=0
 
-if [ "$HTTP_CODE" = "200" ]; then
-    echo "✓ HTTP GET test passed (status: $HTTP_CODE)"
-    if echo "$BODY" | grep -q "Hello World"; then
-        echo "✓ Response body contains expected content"
-    else
-        echo "✗ Response body does not contain expected content"
-        echo "Got: $BODY"
+for test_file in tests/test_*.sh; do
+    if [ -f "$test_file" ]; then
+        echo "Running $test_file..."
+        if "$test_file"; then
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+        echo ""
     fi
-else
-    echo "✗ HTTP GET test failed (status: $HTTP_CODE)"
-    echo "Response: $RESPONSE"
-fi
+done
 
 # Clean up - kill TLE server
 echo "Stopping TLE server..."
@@ -37,3 +34,10 @@ kill $TLE_PID 2>/dev/null
 wait $TLE_PID 2>/dev/null
 
 echo "Tests completed."
+echo "Passed: $TESTS_PASSED, Failed: $TESTS_FAILED"
+
+if [ $TESTS_FAILED -gt 0 ]; then
+    exit 1
+else
+    exit 0
+fi
