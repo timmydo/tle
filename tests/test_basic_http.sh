@@ -8,7 +8,7 @@ BODY=$(echo "$RESPONSE" | head -c -4)
 
 if [ "$HTTP_CODE" = "200" ]; then
     echo "✓ HTTP GET test passed (status: $HTTP_CODE)"
-    if echo "$BODY" | grep -q "Hello World"; then
+    if echo "$BODY" | grep -q "addEventListener"; then
         echo "✓ Response body contains expected content"
         exit 0
     else

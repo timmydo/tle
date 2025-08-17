@@ -278,6 +278,12 @@
 </div>" frame-id x y width height title frame-content)))))
           window-html))))
 
+(defun write-line-crlf (stream &optional (line ""))
+  "Write a line to stream with proper CRLF termination."
+  (write-string line stream)
+  (write-char #\Return stream)
+  (write-char #\Linefeed stream))
+
 (defun substitute-string (string old new)
   "Simple string substitution function."
   (let ((pos (search old string)))
@@ -313,17 +319,17 @@
         (loop for line = (read-line client-stream nil nil)
               while line
               do (progn
-                   (format t "Read header line: '~A'~%" line)
+                   ;;(format t "Read header line: '~A'~%" line)
                    (when (or (string= line "") (string= line (string #\Return)))
                      ;;(format t "Found empty line, ending header parsing~%")
                      (return))
                    (let ((colon-pos (position #\: line)))
                      (when colon-pos
                        (push (cons (string-trim " " (subseq line 0 colon-pos))
-                                   (string-trim " " (subseq line (1+ colon-pos))))
+                                   (string-trim '(#\Space #\Tab #\Return #\Linefeed) (subseq line (1+ colon-pos))))
                              headers)))))
         (setf headers (nreverse headers))
-        (format t "Headers read: ~A~%" headers)
+        (format t "Headers read: ~S~%" headers)
         headers)
     (error (e)
       (format t "Error parsing headers: ~A~%" e)
@@ -392,10 +398,13 @@
   (let* ((app (get-application app-name))
          (rendered-content (if app (render-application app) "<div id=\"editor\">No application found</div>"))
          (html-content (format nil *html-template* rendered-content))
-         (content-length (length html-content))
-         (response (format nil "HTTP/1.1 200 OK~C~AContent-Type: text/html~C~AContent-Length: ~A~C~AConnection: close~C~A~C~A~A"
-                          #\Return #\Linefeed #\Return #\Linefeed content-length #\Return #\Linefeed #\Return #\Linefeed #\Return #\Linefeed html-content)))
-    (write-string response client-stream)
+         (content-length (length html-content)))
+    (write-line-crlf client-stream "HTTP/1.1 200 OK")
+    (write-line-crlf client-stream "Content-Type: text/html")
+    (write-line-crlf client-stream (format nil "Content-Length: ~A" content-length))
+    (write-line-crlf client-stream "Connection: close")
+    (write-line-crlf client-stream)
+    (write-string html-content client-stream)
     (force-output client-stream)
     (finish-output client-stream)
     (format t "HTML response sent~%")))
@@ -403,11 +412,11 @@
 (defun send-sse-response (client-stream &optional (app-name *default-application-name*))
   "Send Server-Sent Events response."
   (push client-stream (client-connections *web-ui-instance*))
-  (format client-stream "HTTP/1.1 200 OK~%")
-  (format client-stream "Content-Type: text/event-stream~%")
-  (format client-stream "Cache-Control: no-cache~%")
-  (format client-stream "Connection: keep-alive~%")
-  (format client-stream "~%")
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Type: text/event-stream")
+  (write-line-crlf client-stream "Cache-Control: no-cache")
+  (write-line-crlf client-stream "Connection: keep-alive")
+  (write-line-crlf client-stream)
   (force-output client-stream)
   
   ;; Send initial content
@@ -419,16 +428,18 @@
      (loop
        (sleep 30)
        (ignore-errors
-         (format client-stream "data: ~A~%~%" 
-                 (jsown:to-json (jsown:new-js ("type" "ping"))))
+         (write-line-crlf client-stream 
+                          (format nil "data: ~A" 
+                                  (jsown:to-json (jsown:new-js ("type" "ping")))))
+         (write-line-crlf client-stream)
          (force-output client-stream))))
    :name "sse-keepalive"))
 
 (defun send-404-response (client-stream)
   "Send 404 Not Found response."
-  (format client-stream "HTTP/1.1 404 Not Found~%")
-  (format client-stream "Content-Length: 0~%")
-  (format client-stream "~%")
+  (write-line-crlf client-stream "HTTP/1.1 404 Not Found")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
   (force-output client-stream))
 
 (defun handle-key-post (client-stream body &optional (app-name *default-application-name*))
@@ -437,17 +448,17 @@
     (let* ((data (jsown:parse body)))
       (handle-key-input data app-name)))
   
-  (format client-stream "HTTP/1.1 200 OK~%")
-  (format client-stream "Content-Length: 0~%")
-  (format client-stream "~%")
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
   (force-output client-stream))
 
 (defun handle-update-post (client-stream &optional (app-name *default-application-name*))
   "Handle update request."
   (broadcast-update app-name)
-  (format client-stream "HTTP/1.1 200 OK~%")
-  (format client-stream "Content-Length: 0~%")
-  (format client-stream "~%")
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
   (force-output client-stream))
 
 (defun handle-frame-update-post (client-stream body &optional (app-name *default-application-name*))
@@ -461,9 +472,9 @@
            (height (jsown:val data "height")))
       (update-frame-position-and-size app-name frame-id x y width height)))
   
-  (format client-stream "HTTP/1.1 200 OK~%")
-  (format client-stream "Content-Length: 0~%")
-  (format client-stream "~%")
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
   (force-output client-stream))
 
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
@@ -473,7 +484,8 @@
       (let* ((rendered-content (render-application app))
              (response (jsown:to-json (jsown:new-js ("type" "update") ("content" rendered-content)))))
         (ignore-errors
-          (format client-stream "data: ~A~%~%" response)
+          (write-line-crlf client-stream (format nil "data: ~A" response))
+          (write-line-crlf client-stream)
           (force-output client-stream))))))
 
 (defun broadcast-update (&optional (app-name *default-application-name*))
