@@ -23,3 +23,7 @@
 		      ui)))
 
 
+;; dispatch to the active view and remap coordinates
+(defmethod window-dispatch-event ((window standard-window) event)
+  (view-handle-event (first (views window)) event))
+

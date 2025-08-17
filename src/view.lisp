@@ -16,3 +16,5 @@
 (defgeneric draw-view (view rect window ui)
   (:documentation "Draw a VIEW on a WINDOW at RECT using UI"))
 
+(defgeneric view-handle-event (view ui-event)
+  (:documentation "The VIEW handles a UI-EVENT"))

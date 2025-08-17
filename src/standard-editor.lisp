@@ -16,3 +16,7 @@
 (defmethod editor-buffers ((editor standard-editor))
   (buffers editor))
 
+(defun current-buffer (editor)
+  "Get the current buffer from the editor."
+  (first (buffers editor)))
+

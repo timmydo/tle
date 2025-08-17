@@ -7,4 +7,8 @@
 (defgeneric draw-window (window ui)
   (:documentation "Draw a WINDOW using UI"))
 
+(defgeneric window-dispatch-event (window ui-event)
+  (:documentation "The WINDOW dispatches a UI-EVENT to the correct view"))
+
+
 

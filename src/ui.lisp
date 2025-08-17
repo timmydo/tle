@@ -2,9 +2,33 @@
 
 (defstruct rect x y width height)
 
+(defstruct modifier
+  shift
+  ctrl
+  meta
+  super)
+
+
 (defclass ui-implementation ()
   ((name :initarg :name :reader name))
   (:documentation "A UI implementation"))
+
+(defclass ui-event ()
+  ()
+  (:documentation "A base class for UI events"))
+
+(defclass keyboard-event (ui-event)
+  ((%code :initarg :code :reader event-keycode)
+   (%modifiers :initarg :modifier :reader event-modifiers))
+  (:documentation "A base class for keyboard UI events"))
+
+(defclass key-down-event (keyboard-event)
+  ()
+  (:documentation "A class for key down events"))
+
+(defclass mouse-event (ui-event)
+  ()
+  (:documentation "A base class for mouse UI events"))
 
 (defgeneric run-ui (ui-implementation editor))
 
@@ -28,7 +52,6 @@ text drawn"))
 
 (defgeneric ui-character-width (window ui)
   (:documentation "The width of text for the given WINDOW using UI"))
-
 
 (defparameter *named-key-syms*
   '("Backspace" "Delete" "Down" "End" "Escape" "F0" "F1" "F10" "F11" "F12" "F2" "F3" "F4" "F5" "F6" "F7" "F8" "F9"

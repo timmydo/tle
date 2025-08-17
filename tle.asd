@@ -3,7 +3,7 @@
   :author "Timmy Douglas <mail@timmydouglas.com>"
   :license  "MPL2"
   :version "0.0.1"
-  :depends-on ("sdl2" "sdl2-ttf" "sdl2-image")
+  :depends-on ("jsown" "usocket" "bordeaux-threads")
   :pathname "src"
   :serial t
   :components (
@@ -17,8 +17,7 @@
                (:file "window") ;; a window displayed by the ui
                (:file "view") ;; a buffer with scroll position, point/mark
 	       ;; implementation
-	       (:file "sdl2-font")
-	       (:file "sdl2-ui")
+	       (:file "web-ui")
 	       (:file "standard-buffer")
 	       (:file "standard-editor")
 	       (:file "standard-window")

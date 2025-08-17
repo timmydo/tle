@@ -139,3 +139,14 @@
       
       )))
 
+
+
+(defmethod view-handle-event ((view standard-view) event)
+  (format t "view-handle-event ~S~%" event)
+  )
+
+(defmethod view-handle-event ((view standard-view) (event key-down-event))
+  (format t "key-down-event ~S~%" event)
+  (let ((buffer (view-buffer view)))
+    
+    ))
