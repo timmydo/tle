@@ -156,6 +156,22 @@
       (format t "Error parsing headers: ~A~%" e)
       nil)))
 
+(defun parse-query-parameters (path)
+  "Parse query parameters from a URL path."
+  (let ((query-pos (position #\? path)))
+    (if query-pos
+        (let ((query-string (subseq path (1+ query-pos)))
+              (path-only (subseq path 0 query-pos))
+              (params (make-hash-table :test 'equal)))
+          (dolist (param (split-string query-string "&"))
+            (let ((equals-pos (position #\= param)))
+              (when equals-pos
+                (setf (gethash (subseq param 0 equals-pos) params)
+                      (subseq param (1+ equals-pos))))))
+          (values path-only params))
+        (values path (make-hash-table :test 'equal)))))
+
+
 (defun handle-http-request (client-stream)
   "Handle HTTP request and send appropriate response. Returns :keep-alive or :close."
   (handler-case
@@ -164,37 +180,39 @@
         (if request-line
             (let* ((parts (split-string request-line " "))
                    (method (first parts))
-                   (path (second parts))
+                   (full-path (second parts))
                    (headers (parse-http-headers client-stream))
                    (content-length (parse-integer (or (cdr (assoc "Content-Length" headers :test #'string=)) "0") :junk-allowed t))
                    (body (read-http-body client-stream content-length)))
-              (format t "Method: ~A, Path: ~A~%" method path)
-              
-              (cond
-                ((and (string= method "GET") (string= path "/"))
-                 (send-html-response client-stream)
-                 :close)
-                ((and (string= method "GET") (string= path "/events"))
-                 (send-sse-response client-stream)
-                 :keep-alive)
-                ((and (string= method "POST") (string= path "/key"))
-                 (handle-key-post client-stream body)
-                 :close)
-                ((and (string= method "POST") (string= path "/update"))
-                 (handle-update-post client-stream)
-                 :close)
-                (t
-                 (send-404-response client-stream)
-                 :close)))
+              (multiple-value-bind (path query-params) (parse-query-parameters full-path)
+                (let ((app-name (or (gethash "app" query-params) *default-application-name*)))
+                  (format t "Method: ~A, Path: ~A, App: ~A~%" method path app-name)
+                  
+                  (cond
+                    ((and (string= method "GET") (string= path "/"))
+                     (send-html-response client-stream app-name)
+                     :close)
+                    ((and (string= method "GET") (string= path "/events"))
+                     (send-sse-response client-stream app-name)
+                     :keep-alive)
+                    ((and (string= method "POST") (string= path "/key"))
+                     (handle-key-post client-stream body app-name)
+                     :close)
+                    ((and (string= method "POST") (string= path "/update"))
+                     (handle-update-post client-stream app-name)
+                     :close)
+                    (t
+                     (send-404-response client-stream)
+                     :close)))))
             :close))
     (error (e)
       (format t "Error handling request: ~A~%" e)
       (ignore-errors (send-404-response client-stream))
       :close)))
 
-(defun send-html-response (client-stream)
+(defun send-html-response (client-stream &optional (app-name *default-application-name*))
   "Send HTML page response."
-  (format t "Sending HTML response~%")
+  (format t "Sending HTML response for app: ~A~%" app-name)
   (let* ((html-content *html-template*)
          (content-length (length html-content))
          (response (format nil "HTTP/1.1 200 OK~C~AContent-Type: text/html~C~AContent-Length: ~A~C~AConnection: close~C~A~C~A~A"
@@ -204,7 +222,7 @@
     (finish-output client-stream)
     (format t "HTML response sent~%")))
 
-(defun send-sse-response (client-stream)
+(defun send-sse-response (client-stream &optional (app-name *default-application-name*))
   "Send Server-Sent Events response."
   (push client-stream (client-connections *web-ui-instance*))
   (format client-stream "HTTP/1.1 200 OK~%")
@@ -215,7 +233,7 @@
   (force-output client-stream)
   
   ;; Send initial content
-  (send-content-update client-stream)
+  (send-content-update client-stream app-name)
   
   ;; Keep connection alive in background
   (bt:make-thread
@@ -235,50 +253,51 @@
   (format client-stream "~%")
   (force-output client-stream))
 
-(defun handle-key-post (client-stream body)
+(defun handle-key-post (client-stream body &optional (app-name *default-application-name*))
   "Handle key input POST request."
   (when body
     (let* ((data (jsown:parse body)))
-      (handle-key-input data)))
+      (handle-key-input data app-name)))
   
   (format client-stream "HTTP/1.1 200 OK~%")
   (format client-stream "Content-Length: 0~%")
   (format client-stream "~%")
   (force-output client-stream))
 
-(defun handle-update-post (client-stream)
+(defun handle-update-post (client-stream &optional (app-name *default-application-name*))
   "Handle update request."
-  (broadcast-update)
+  (broadcast-update app-name)
   (format client-stream "HTTP/1.1 200 OK~%")
   (format client-stream "Content-Length: 0~%")
   (format client-stream "~%")
   (force-output client-stream))
 
-(defun send-content-update (client-stream)
+(defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current buffer content to client via SSE."
-  (when *editor-instance*
-    (let* ((buffer (current-buffer *editor-instance*))
-           (text (get-buffer-text buffer))
-           (escaped-text (escape-html text))
-           (response (jsown:to-json (jsown:new-js ("type" "update") ("content" escaped-text)))))
-      (ignore-errors
-        (format client-stream "data: ~A~%~%" response)
-        (force-output client-stream)))))
+  (let ((app (get-application app-name)))
+    (when (and app (application-editor app))
+      (let* ((buffer (current-buffer (application-editor app)))
+             (text (get-buffer-text buffer))
+             (escaped-text (escape-html text))
+             (response (jsown:to-json (jsown:new-js ("type" "update") ("content" escaped-text)))))
+        (ignore-errors
+          (format client-stream "data: ~A~%~%" response)
+          (force-output client-stream))))))
 
-(defun broadcast-update ()
+(defun broadcast-update (&optional (app-name *default-application-name*))
   "Send content update to all connected clients."
   (when *web-ui-instance*
     (dolist (client (client-connections *web-ui-instance*))
-      (ignore-errors (send-content-update client)))))
+      (ignore-errors (send-content-update client app-name)))))
 
-(defun handle-key-input (key-data)
+(defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."
   (let ((key (jsown:val key-data "key"))
         (ctrl (jsown:val key-data "ctrl"))
         (alt (jsown:val key-data "alt")))
     (declare (ignore ctrl alt))
-    (format t "Key event received. Key: '~A'. (Buffer modification is not implemented)~%" key)
-    (broadcast-update)))
+    (format t "Key event received for app '~A'. Key: '~A'. (Buffer modification is not implemented)~%" app-name key)
+    (broadcast-update app-name)))
 
 (defun handle-client (client-stream)
   "Handle a client connection."
@@ -306,10 +325,17 @@
 (defmethod run-ui ((ui web-ui) (editor editor))
   (setf *editor-instance* editor)
   (setf *web-ui-instance* ui)
+  ;; Initialize default application
+  (let ((default-app (make-instance 'application 
+                                    :name *default-application-name*
+                                    :editor editor)))
+    (setf (gethash *default-application-name* *applications*) default-app))
   (start-server 8080)
   (format t "~%Your TLE application is now running.~%")
   (format t "Please open your web browser to http://localhost:8080~%")
+  (format t "Use ?app=<name> parameter to access different applications~%")
   (loop (sleep 1)))
 
 (defun make-web-ui ()
   (make-instance 'web-ui))
+

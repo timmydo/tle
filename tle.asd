@@ -16,12 +16,9 @@
                (:file "editor") ;; total editor state. list of buffers and windows.
                (:file "window") ;; a window displayed by the ui
                (:file "view") ;; a buffer with scroll position, point/mark
+               (:file "application") ;; application with frames and editor
 	       ;; implementation
 	       (:file "web-ui")
-	       (:file "standard-buffer")
-	       (:file "standard-editor")
-	       (:file "standard-window")
-	       (:file "standard-view")
 
 	       ;; entry point
                (:file "main")
