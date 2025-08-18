@@ -37,6 +37,18 @@
 (defgeneric buffer-clear-mark (buffer)
   (:documentation "Clear the mark"))
 
+(defgeneric forward-char (buffer)
+  (:documentation "Move point forward one character"))
+
+(defgeneric backward-char (buffer)
+  (:documentation "Move point backward one character"))
+
+(defgeneric next-line (buffer)
+  (:documentation "Move point to the next line"))
+
+(defgeneric previous-line (buffer)
+  (:documentation "Move point to the previous line"))
+
 
 (defclass standard-buffer (buffer)
   ((%lines :initform (make-array 0) :accessor lines)
@@ -93,6 +105,65 @@
 
 (defmethod buffer-clear-mark ((buffer standard-buffer))
   (setf (buffer-mark buffer) nil))
+
+(defmethod forward-char ((buffer standard-buffer))
+  "Move point forward one character, wrapping to next line if needed"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line (first point))
+           (col (second point))
+           (current-line-text (buffer-line buffer line))
+           (line-length (length current-line-text)))
+      (cond
+        ;; If at end of line and not at last line, move to beginning of next line
+        ((and (>= col line-length) (< line (1- (buffer-line-count buffer))))
+         (buffer-set-point buffer (1+ line) 0))
+        ;; If within the line, move forward one character
+        ((< col line-length)
+         (buffer-set-point buffer line (1+ col)))
+        ;; Otherwise, stay at current position (end of buffer)
+        (t nil)))))
+
+(defmethod backward-char ((buffer standard-buffer))
+  "Move point backward one character, wrapping to previous line if needed"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line (first point))
+           (col (second point)))
+      (cond
+        ;; If at beginning of line and not at first line, move to end of previous line
+        ((and (= col 0) (> line 0))
+         (let ((prev-line-text (buffer-line buffer (1- line))))
+           (buffer-set-point buffer (1- line) (length prev-line-text))))
+        ;; If within the line, move backward one character
+        ((> col 0)
+         (buffer-set-point buffer line (1- col)))
+        ;; Otherwise, stay at current position (beginning of buffer)
+        (t nil)))))
+
+(defmethod next-line ((buffer standard-buffer))
+  "Move point to the next line, preserving column position when possible"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line (first point))
+           (col (second point)))
+      (when (< line (1- (buffer-line-count buffer)))
+        (let* ((next-line-text (buffer-line buffer (1+ line)))
+               (next-line-length (length next-line-text))
+               (new-col (min col next-line-length)))
+          (buffer-set-point buffer (1+ line) new-col))))))
+
+(defmethod previous-line ((buffer standard-buffer))
+  "Move point to the previous line, preserving column position when possible"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line (first point))
+           (col (second point)))
+      (when (> line 0)
+        (let* ((prev-line-text (buffer-line buffer (1- line)))
+               (prev-line-length (length prev-line-text))
+               (new-col (min col prev-line-length)))
+          (buffer-set-point buffer (1- line) new-col))))))
 
 (defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col)
   "Render a line with point cursor, mark indicators, and highlighting between them."
