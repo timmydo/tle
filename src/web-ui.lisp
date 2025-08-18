@@ -176,12 +176,10 @@
             padding-left: 5px;
         }
         .cursor {
-            background-color: #98c379;
+            background-color: #56b6c2;
             color: #282c34;
         }
         .mark {
-            background-color: #a8d389;
-            color: #282c34;
         }
         .selection {
             background-color: #3e6451;
@@ -192,8 +190,6 @@
             color: #282c34;
         }
         .selection.mark {
-            background-color: #3e6451;
-            color: #abb2bf;
         }
     </style>
 </head>
