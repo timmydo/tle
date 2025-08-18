@@ -102,6 +102,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: background-color 0.2s ease;
+        }
+        .window.focused .window-header {
+            background-color: #5a647a;
+        }
+        .window.unfocused .window-header {
+            background-color: #4b5263;
         }
         .window-close-btn {
             background: #e06c75;
@@ -160,6 +167,7 @@
     <script>
         const MENU_BAR_HEIGHT = 30;
         let currentZIndex = 1000;
+        let focusedWindow = null;
         let eventSource = null;
         let draggedWindow = null;
         let dragOffset = {x: 0, y: 0};
@@ -174,9 +182,10 @@
             resizer.addEventListener('mousedown', startResize);
             closeBtn.addEventListener('click', closeFrame);
             
-            // Bring window to front when clicked anywhere
+            // Bring window to front and focus when clicked anywhere
             windowElement.addEventListener('mousedown', (e) => {
                 bringToFront(windowElement);
+                setWindowFocus(windowElement);
             });
         }
         
@@ -352,6 +361,27 @@
             });
         }
         
+        function setWindowFocus(windowElement) {
+            // Remove focus from previously focused window
+            if (focusedWindow) {
+                focusedWindow.classList.remove('focused');
+                focusedWindow.classList.add('unfocused');
+            }
+            
+            // Set focus on new window
+            focusedWindow = windowElement;
+            windowElement.classList.remove('unfocused');
+            windowElement.classList.add('focused');
+            
+            // Send focus update to server
+            const frameId = windowElement.dataset.frameId;
+            fetch('/frame-focus', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ frameId: frameId })
+            });
+        }
+        
         document.addEventListener('keydown', (e) => {
             e.preventDefault();
             let key = e.key;
@@ -398,16 +428,17 @@
     (setf escaped (substitute-string escaped ">" "&gt;"))
     escaped))
 
-(defun render-window-html (frame-id title content x y width height z-index)
+(defun render-window-html (frame-id title content x y width height z-index focused)
   "Generate HTML for a window frame."
-  (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
+  (let ((focus-class (if focused "focused" "unfocused")))
+    (format nil "<div class=\"window ~A\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
   <div class=\"window-header\">
     <span>~A</span>
     <button class=\"window-close-btn\" title=\"Close\">&#215;</button>
   </div>
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
-</div>" frame-id x y width height z-index title content))
+</div>" focus-class frame-id x y width height z-index title content)))
 
 (defmethod render-application ((app application))
   "Render an application as HTML with all its frames as draggable windows."
@@ -419,7 +450,7 @@
                (content (if buffer (escape-html (get-buffer-text buffer)) "No content"))
                (frame-id "default-frame")
                (title (format nil "~A - Buffer" (application-name app))))
-          (render-window-html frame-id title content 50 50 600 400 1000))
+          (render-window-html frame-id title content 50 50 600 400 1000 t))
         ;; Render all frames as windows using their stored coordinates
         (let ((window-html ""))
           (dolist (frame frames)
@@ -432,10 +463,11 @@
                    (y (if (typep frame 'standard-frame) (frame-y frame) 50))
                    (width (if (typep frame 'standard-frame) (frame-width frame) 400))
                    (height (if (typep frame 'standard-frame) (frame-height frame) 300))
-                   (z-index (if (typep frame 'standard-frame) (frame-z-index frame) 1000)))
+                   (z-index (if (typep frame 'standard-frame) (frame-z-index frame) 1000))
+                   (focused (if (typep frame 'standard-frame) (frame-focused frame) nil)))
               (setf window-html
                     (concatenate 'string window-html
-                                 (render-window-html frame-id title frame-content x y width height z-index)))))
+                                 (render-window-html frame-id title frame-content x y width height z-index focused)))))
           window-html))))
 
 (defun write-line-crlf (stream &optional (line ""))
@@ -551,6 +583,9 @@
                      :close)
                     ((and (string= method "POST") (string= path "/frame-zindex"))
                      (handle-frame-zindex-post client-stream body app-name)
+                     :close)
+                    ((and (string= method "POST") (string= path "/frame-focus"))
+                     (handle-frame-focus-post client-stream body app-name)
                      :close)
                     (t
                      (send-404-response client-stream)
@@ -693,6 +728,18 @@
   (write-line-crlf client-stream)
   (force-output client-stream))
 
+(defun handle-frame-focus-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle frame focus update request."
+  (when body
+    (let* ((data (jsown:parse body))
+           (frame-id (jsown:val data "frameId")))
+      (update-application-frame-focus app-name frame-id)))
+  
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
+  (force-output client-stream))
+
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."
   (let ((app (get-application app-name)))
@@ -774,7 +821,11 @@
                                        :y y
                                        :width 400
                                        :height 300
-                                       :z-index new-z-index)))
+                                       :z-index new-z-index
+                                       :focused t)))
+        ;; Unfocus all existing frames before adding the new focused frame
+        (dolist (frame (application-frames app))
+          (update-frame-focus frame nil))
         (push new-frame (application-frames app))
         (format t "Created new frame ~A in app ~A with z-index ~A. Total frames: ~A~%" 
                 frame-id app-name new-z-index (length (application-frames app)))))))
@@ -788,6 +839,17 @@
           (update-frame-z-index-value frame z-index)
           (format t "Updated frame ~A z-index to ~A~%" frame-id z-index)
           (return))))))
+
+(defun update-application-frame-focus (app-name focused-frame-id)
+  "Update frame focus in the application - only one frame can be focused at a time."
+  (let ((app (get-application app-name)))
+    (when app
+      (dolist (frame (application-frames app))
+        (let ((frame-id (symbol-name (frame-id frame)))
+              (should-be-focused (string= (symbol-name (frame-id frame)) focused-frame-id)))
+          (update-frame-focus frame should-be-focused)
+          (when should-be-focused
+            (format t "Focused frame ~A~%" frame-id)))))))
 
 (defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."

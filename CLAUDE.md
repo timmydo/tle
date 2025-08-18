@@ -56,3 +56,22 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 - Line-based text buffer operations
 - Generic UI framework allowing multiple backend implementations
 - Self-contained HTTP server without external web framework dependencies
+
+## Window Management System
+- **Multi-frame Interface**: Support for multiple draggable windows (frames) within the application
+- **Top Menu Bar**: Fixed menu bar with "File" menu containing window management options
+- **Window Operations**:
+  - **New Window**: Create new frames via "File > New Window" menu
+  - **Close Windows**: [X] close buttons in window headers for frame removal
+  - **Drag & Drop**: Draggable windows with proper coordinate handling relative to menu bar
+  - **Resize**: Window resizing via corner drag handles
+- **Z-index Management**: Automatic window stacking with most recently interacted window on top
+- **Focus System**: Visual focus indication with lighter header colors for the active window
+- **Persistent State**: Window positions, sizes, z-index, and focus state maintained server-side
+
+## Technical Implementation Details
+- **Frame System**: Generic frame interface with standard-frame implementation
+- **Client-Server Communication**: RESTful endpoints for window operations (/frame-new, /frame-close, /frame-update, /frame-zindex, /frame-focus)
+- **Real-time Updates**: Server-sent events for immediate UI synchronization across clients
+- **CSS Transitions**: Smooth visual feedback for focus changes and interactions
+- **Coordinate System**: Menu bar offset handling for proper window positioning
