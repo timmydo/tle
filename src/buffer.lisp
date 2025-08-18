@@ -209,8 +209,8 @@
 (defun render-line-with-spans (line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col)
   "Render a line character by character with appropriate spans for selection, cursor, and mark."
   (let ((result "")
-        (line-start-col (if (= line-number start-line) start-col 0))
-        (line-end-col (if (= line-number end-line) end-col (length line-text)))
+        (line-start-col (if (and start-line (= line-number start-line)) start-col 0))
+        (line-end-col (if (and end-line (= line-number end-line)) end-col (length line-text)))
         (cursor-pos (when (and point-line (= line-number point-line)) point-col))
         (mark-pos (when (and mark-line (= line-number mark-line)) mark-col)))
     
@@ -258,6 +258,15 @@
   (if (slot-boundp buffer '%lines)
       (let ((point (buffer-get-point buffer))
             (mark (buffer-get-mark buffer)))
+        ;; Validate point structure
+        (unless (and point (listp point) (>= (length point) 2) 
+                     (numberp (first point)) (numberp (second point)))
+          (error "Invalid point structure: ~A" point))
+        ;; Validate mark structure if it exists
+        (when (and mark (not (and (listp mark) (>= (length mark) 2) 
+                                  (numberp (first mark)) (numberp (second mark)))))
+          (error "Invalid mark structure: ~A" mark))
+        
         (format nil "<div class=\"buffer-content\">~{~A~^~%~}</div>"
                 (loop for i from 0 below (buffer-line-count buffer)
                       collect (let ((line-text (buffer-line buffer i))

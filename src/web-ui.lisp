@@ -655,7 +655,8 @@
                      :close)))))
             :close))
     (error (e)
-      (format t "Error handling request: ~A~%" e)
+      (format t "Error handling request:~%")
+      (describe e t)  ; This often includes stack information
       (ignore-errors (send-404-response client-stream))
       :close)))
 
@@ -886,9 +887,50 @@
   (let ((key (jsown:val key-data "key"))
         (ctrl (jsown:val key-data "ctrl"))
         (alt (jsown:val key-data "alt")))
-    (declare (ignore ctrl alt))
-    (format t "Key event received for app '~A'. Key: '~A'. (Buffer modification is not implemented)~%" app-name key)
-    (broadcast-update app-name)))
+    (format t "Key event received for app '~A'. Key: '~A', Ctrl: ~A, Alt: ~A~%" app-name key ctrl alt)
+    
+    ;; Get the current buffer for the application
+    (let* ((app (get-application app-name))
+           (editor (when app (application-editor app)))
+           (buffer (when editor (current-buffer editor))))
+      
+      (when buffer
+        ;; Handle cursor movement keys
+        (cond
+          ;; Arrow keys
+          ((string= key "ArrowUp")
+           (previous-line buffer)
+           (format t "Moved cursor up~%"))
+          ((string= key "ArrowDown") 
+           (next-line buffer)
+           (format t "Moved cursor down~%"))
+          ((string= key "ArrowLeft")
+           (backward-char buffer)
+           (format t "Moved cursor left~%"))
+          ((string= key "ArrowRight")
+           (forward-char buffer)
+           (format t "Moved cursor right~%"))
+          
+          ;; Ctrl key combinations
+          ((and ctrl (string= key "p"))
+           (previous-line buffer)
+           (format t "Ctrl-P: Moved cursor up~%"))
+          ((and ctrl (string= key "n"))
+           (next-line buffer)
+           (format t "Ctrl-N: Moved cursor down~%"))
+          ((and ctrl (string= key "b"))
+           (backward-char buffer)
+           (format t "Ctrl-B: Moved cursor left~%"))
+          ((and ctrl (string= key "f"))
+           (forward-char buffer)
+           (format t "Ctrl-F: Moved cursor right~%"))
+          
+          ;; Default case for unhandled keys
+          (t
+           (format t "Unhandled key: ~A~%" key))))
+      
+      ;; Always broadcast update to refresh the display
+      (broadcast-update app-name))))
 
 (defun handle-client (client-socket)
   "Handle a client connection."
