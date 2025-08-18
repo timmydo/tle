@@ -47,6 +47,28 @@
             border-bottom: 1px solid #5c6370;
             user-select: none;
             font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .window-close-btn {
+            background: #e06c75;
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+        .window-close-btn:hover {
+            background: #c86975;
         }
         .window-content {
             padding: 10px;
@@ -84,9 +106,11 @@
         function makeWindowDraggable(windowElement) {
             const header = windowElement.querySelector('.window-header');
             const resizer = windowElement.querySelector('.window-resizer');
+            const closeBtn = windowElement.querySelector('.window-close-btn');
             
             header.addEventListener('mousedown', startDrag);
             resizer.addEventListener('mousedown', startResize);
+            closeBtn.addEventListener('click', closeFrame);
         }
         
         function startDrag(e) {
@@ -214,6 +238,20 @@
             });
         }
         
+        function closeFrame(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const windowElement = e.target.closest('.window');
+            const frameId = windowElement.dataset.frameId;
+            
+            fetch('/frame-close', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ frameId: frameId })
+            });
+        }
+        
         document.addEventListener('keydown', (e) => {
             e.preventDefault();
             let key = e.key;
@@ -253,7 +291,10 @@
                (content (if buffer (escape-html (get-buffer-text buffer)) "No content"))
                (frame-id "default-frame"))
           (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: 50px; top: 50px; width: 600px; height: 400px;\">
-  <div class=\"window-header\">~A - Buffer</div>
+  <div class=\"window-header\">
+    <span>~A - Buffer</span>
+    <button class=\"window-close-btn\" title=\"Close\">×</button>
+  </div>
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
 </div>" frame-id (application-name app) content))
@@ -272,7 +313,10 @@
               (setf window-html
                     (concatenate 'string window-html
                                  (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx;\">
-  <div class=\"window-header\">~A</div>
+  <div class=\"window-header\">
+    <span>~A</span>
+    <button class=\"window-close-btn\" title=\"Close\">×</button>
+  </div>
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
 </div>" frame-id x y width height title frame-content)))))
@@ -383,6 +427,9 @@
                     ((and (string= method "POST") (string= path "/frame-update"))
                      (handle-frame-update-post client-stream body app-name)
                      :close)
+                    ((and (string= method "POST") (string= path "/frame-close"))
+                     (handle-frame-close-post client-stream body app-name)
+                     :close)
                     (t
                      (send-404-response client-stream)
                      :close)))))
@@ -487,6 +534,19 @@
   (write-line-crlf client-stream)
   (force-output client-stream))
 
+(defun handle-frame-close-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle frame close request."
+  (when body
+    (let* ((data (jsown:parse body))
+           (frame-id (jsown:val data "frameId")))
+      (remove-frame-from-application app-name frame-id)
+      (broadcast-update app-name)))
+  
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
+  (force-output client-stream))
+
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."
   (let ((app (get-application app-name)))
@@ -529,6 +589,19 @@
           (format t "Updated frame ~A: position (~A,~A) size (~A,~A)~%" 
                   frame-id x y width height)
           (return))))))
+
+(defun remove-frame-from-application (app-name frame-id)
+  "Remove a frame from the application."
+  (let ((app (get-application app-name)))
+    (when app
+      (let ((frames-before (length (application-frames app))))
+        (setf (application-frames app)
+              (remove-if (lambda (frame)
+                          (string= (symbol-name (frame-id frame)) frame-id))
+                        (application-frames app)))
+        (let ((frames-after (length (application-frames app))))
+          (format t "Removed frame ~A from app ~A. Frames: ~A -> ~A~%" 
+                  frame-id app-name frames-before frames-after))))))
 
 (defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."
