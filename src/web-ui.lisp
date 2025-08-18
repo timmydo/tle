@@ -416,6 +416,7 @@
   (write-line-crlf client-stream "Content-Type: text/event-stream")
   (write-line-crlf client-stream "Cache-Control: no-cache")
   (write-line-crlf client-stream "Connection: keep-alive")
+  (write-line-crlf client-stream "Access-Control-Allow-Origin: *")
   (write-line-crlf client-stream)
   (force-output client-stream)
   
@@ -425,14 +426,23 @@
   ;; Keep connection alive in background
   (bt:make-thread
    (lambda ()
-     (loop
-       (sleep 30)
-       (ignore-errors
-         (write-line-crlf client-stream 
-                          (format nil "data: ~A" 
-                                  (jsown:to-json (jsown:new-js ("type" "ping")))))
-         (write-line-crlf client-stream)
-         (force-output client-stream))))
+     (handler-case
+         (loop
+           (sleep 30)
+           (handler-case
+               (progn
+                 (write-line-crlf client-stream ": heartbeat")
+                 (write-line-crlf client-stream)
+                 (force-output client-stream))
+             (error (e)
+               (format t "SSE connection error, removing client: ~A~%" e)
+               (setf (client-connections *web-ui-instance*)
+                     (remove client-stream (client-connections *web-ui-instance*)))
+               (return))))
+       (error (e)
+         (format t "SSE thread error: ~A~%" e)
+         (setf (client-connections *web-ui-instance*)
+               (remove client-stream (client-connections *web-ui-instance*))))))
    :name "sse-keepalive"))
 
 (defun send-404-response (client-stream)
@@ -483,16 +493,30 @@
     (when app
       (let* ((rendered-content (render-application app))
              (response (jsown:to-json (jsown:new-js ("type" "update") ("content" rendered-content)))))
-        (ignore-errors
-          (write-line-crlf client-stream (format nil "data: ~A" response))
-          (write-line-crlf client-stream)
-          (force-output client-stream))))))
+        (handler-case
+            (progn
+              (write-line-crlf client-stream (format nil "data: ~A" response))
+              (write-line-crlf client-stream)
+              (force-output client-stream))
+          (error (e)
+            (format t "Error sending content update: ~A~%" e)
+            (setf (client-connections *web-ui-instance*)
+                  (remove client-stream (client-connections *web-ui-instance*)))))))))
 
 (defun broadcast-update (&optional (app-name *default-application-name*))
   "Send content update to all connected clients."
   (when *web-ui-instance*
-    (dolist (client (client-connections *web-ui-instance*))
-      (ignore-errors (send-content-update client app-name)))))
+    (let ((clients-to-remove '()))
+      (dolist (client (client-connections *web-ui-instance*))
+        (handler-case
+            (send-content-update client app-name)
+          (error (e)
+            (format t "Error broadcasting to client, will remove: ~A~%" e)
+            (push client clients-to-remove))))
+      ;; Remove failed clients
+      (dolist (client clients-to-remove)
+        (setf (client-connections *web-ui-instance*)
+              (remove client (client-connections *web-ui-instance*)))))))
 
 (defun update-frame-position-and-size (app-name frame-id x y width height)
   "Update frame position and size in the application."
@@ -515,12 +539,18 @@
     (format t "Key event received for app '~A'. Key: '~A'. (Buffer modification is not implemented)~%" app-name key)
     (broadcast-update app-name)))
 
-(defun handle-client (client-stream)
+(defun handle-client (client-socket)
   "Handle a client connection."
-  (let ((connection-status (handle-http-request client-stream)))
-    (when (eq connection-status :close)
-      ;; Small delay to ensure response is sent before closing
-      (sleep 0.1))))
+  (let* ((client-stream (usocket:socket-stream client-socket))
+         (connection-status (handle-http-request client-stream)))
+    (case connection-status
+      (:close 
+       ;; Small delay to ensure response is sent before closing
+       (sleep 0.1)
+       (usocket:socket-close client-socket))
+      (:keep-alive
+       ;; Don't close the socket for SSE connections
+       nil))))
 
 (defun start-server (port)
   "Start the web server."
@@ -533,9 +563,7 @@
          (let ((client-socket (usocket:socket-accept server-socket)))
            (bt:make-thread 
             (lambda () 
-              (unwind-protect
-                  (handle-client (usocket:socket-stream client-socket))
-                (usocket:socket-close client-socket)))))))
+              (handle-client client-socket))))))
      :name "web-server")))
 
 (defmethod run-ui ((ui web-ui) (editor editor))
