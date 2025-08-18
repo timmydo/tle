@@ -159,6 +159,7 @@
     <div id=\"app-container\">~A</div>
     <script>
         const MENU_BAR_HEIGHT = 30;
+        let currentZIndex = 1000;
         let eventSource = null;
         let draggedWindow = null;
         let dragOffset = {x: 0, y: 0};
@@ -172,6 +173,11 @@
             header.addEventListener('mousedown', startDrag);
             resizer.addEventListener('mousedown', startResize);
             closeBtn.addEventListener('click', closeFrame);
+            
+            // Bring window to front when clicked anywhere
+            windowElement.addEventListener('mousedown', (e) => {
+                bringToFront(windowElement);
+            });
         }
         
         function startDrag(e) {
@@ -333,6 +339,19 @@
             });
         }
         
+        function bringToFront(windowElement) {
+            currentZIndex++;
+            windowElement.style.zIndex = currentZIndex;
+            
+            // Send z-index update to server
+            const frameId = windowElement.dataset.frameId;
+            fetch('/frame-zindex', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ frameId: frameId, zIndex: currentZIndex })
+            });
+        }
+        
         document.addEventListener('keydown', (e) => {
             e.preventDefault();
             let key = e.key;
@@ -379,16 +398,16 @@
     (setf escaped (substitute-string escaped ">" "&gt;"))
     escaped))
 
-(defun render-window-html (frame-id title content x y width height)
+(defun render-window-html (frame-id title content x y width height z-index)
   "Generate HTML for a window frame."
-  (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx;\">
+  (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
   <div class=\"window-header\">
     <span>~A</span>
     <button class=\"window-close-btn\" title=\"Close\">&#215;</button>
   </div>
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
-</div>" frame-id x y width height title content))
+</div>" frame-id x y width height z-index title content))
 
 (defmethod render-application ((app application))
   "Render an application as HTML with all its frames as draggable windows."
@@ -400,7 +419,7 @@
                (content (if buffer (escape-html (get-buffer-text buffer)) "No content"))
                (frame-id "default-frame")
                (title (format nil "~A - Buffer" (application-name app))))
-          (render-window-html frame-id title content 50 50 600 400))
+          (render-window-html frame-id title content 50 50 600 400 1000))
         ;; Render all frames as windows using their stored coordinates
         (let ((window-html ""))
           (dolist (frame frames)
@@ -412,10 +431,11 @@
                    (x (if (typep frame 'standard-frame) (frame-x frame) 50))
                    (y (if (typep frame 'standard-frame) (frame-y frame) 50))
                    (width (if (typep frame 'standard-frame) (frame-width frame) 400))
-                   (height (if (typep frame 'standard-frame) (frame-height frame) 300)))
+                   (height (if (typep frame 'standard-frame) (frame-height frame) 300))
+                   (z-index (if (typep frame 'standard-frame) (frame-z-index frame) 1000)))
               (setf window-html
                     (concatenate 'string window-html
-                                 (render-window-html frame-id title frame-content x y width height)))))
+                                 (render-window-html frame-id title frame-content x y width height z-index)))))
           window-html))))
 
 (defun write-line-crlf (stream &optional (line ""))
@@ -528,6 +548,9 @@
                      :close)
                     ((and (string= method "POST") (string= path "/frame-new"))
                      (handle-frame-new-post client-stream body app-name)
+                     :close)
+                    ((and (string= method "POST") (string= path "/frame-zindex"))
+                     (handle-frame-zindex-post client-stream body app-name)
                      :close)
                     (t
                      (send-404-response client-stream)
@@ -657,6 +680,19 @@
   (write-line-crlf client-stream)
   (force-output client-stream))
 
+(defun handle-frame-zindex-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle frame z-index update request."
+  (when body
+    (let* ((data (jsown:parse body))
+           (frame-id (jsown:val data "frameId"))
+           (z-index (jsown:val data "zIndex")))
+      (update-frame-z-index app-name frame-id z-index)))
+  
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
+  (force-output client-stream))
+
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."
   (let ((app (get-application app-name)))
@@ -724,6 +760,12 @@
              ;; Position new frames with slight offset
              (x (+ 100 (* 20 (length (application-frames app)))))
              (y (+ 100 (* 20 (length (application-frames app)))))
+             ;; Find highest z-index among existing frames and add 1
+             (highest-z-index (if (application-frames app)
+                                 (reduce #'max (application-frames app) 
+                                        :key #'frame-z-index)
+                                 1000))
+             (new-z-index (1+ highest-z-index))
              (new-frame (make-instance 'standard-frame
                                        :id frame-id
                                        :title title
@@ -731,10 +773,21 @@
                                        :x x
                                        :y y
                                        :width 400
-                                       :height 300)))
+                                       :height 300
+                                       :z-index new-z-index)))
         (push new-frame (application-frames app))
-        (format t "Created new frame ~A in app ~A. Total frames: ~A~%" 
-                frame-id app-name (length (application-frames app)))))))
+        (format t "Created new frame ~A in app ~A with z-index ~A. Total frames: ~A~%" 
+                frame-id app-name new-z-index (length (application-frames app)))))))
+
+(defun update-frame-z-index (app-name frame-id z-index)
+  "Update frame z-index in the application."
+  (let ((app (get-application app-name)))
+    (when app
+      (dolist (frame (application-frames app))
+        (when (string= (symbol-name (frame-id frame)) frame-id)
+          (update-frame-z-index-value frame z-index)
+          (format t "Updated frame ~A z-index to ~A~%" frame-id z-index)
+          (return))))))
 
 (defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."

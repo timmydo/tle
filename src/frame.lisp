@@ -7,6 +7,7 @@
    (y :initarg :y :accessor frame-y :initform 50)
    (width :initarg :width :accessor frame-width :initform 400)
    (height :initarg :height :accessor frame-height :initform 300)
+   (z-index :initarg :z-index :accessor frame-z-index :initform 1000)
    (%handle :initform nil :accessor frame-handle))
   (:documentation "A frame with position, size, and handle"))
 
@@ -34,6 +35,9 @@
 
 (defgeneric update-frame-size (frame width height)
   (:documentation "Update frame size"))
+
+(defgeneric update-frame-z-index-value (frame z-index)
+  (:documentation "Update frame z-index"))
 
 (defclass standard-frame (frame)
   ((%views :accessor frame-views)
@@ -71,25 +75,7 @@
   (setf (frame-width frame) width)
   (setf (frame-height frame) height))
 
-;; simple frame ... only display one buffer now
-(defmethod draw-frame ((frame standard-frame) (ui ui-implementation))
-  (draw-view (first (frame-views frame))
-	     (make-rect :x (frame-x frame) :y (frame-y frame) :width (frame-width frame) :height (frame-height frame))
-	     frame
-	     ui))
+(defmethod update-frame-z-index-value ((frame standard-frame) z-index)
+  "Update frame z-index"
+  (setf (frame-z-index frame) z-index))
 
-;; dispatch to the active view and remap coordinates
-(defmethod frame-dispatch-event ((frame standard-frame) event)
-  (view-handle-event (first (frame-views frame)) event))
-
-;; simple window ... only display one buffer now
-(defmethod draw-window ((window standard-window) (ui ui-implementation))
-  (multiple-value-bind (width height) (ui-window-size window ui)
-    (draw-view (first (views window))
-		      (make-rect :x 0 :y 0 :width width :height height)
-		      window
-		      ui)))
-
-;; dispatch to the active view and remap coordinates
-(defmethod window-dispatch-event ((window standard-window) event)
-  (view-handle-event (first (views window)) event))
