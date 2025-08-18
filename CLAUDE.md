@@ -28,21 +28,25 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 ## Architecture
 
 ### Core Components (Interface Layer)
-- **UI** (`src/ui.lisp`): Abstract UI framework defining generic functions for drawing, events, and key handling
-- **Buffer** (`src/buffer.lisp`): Text buffer abstraction with line-based operations
-- **Editor** (`src/editor.lisp`): Top-level editor state managing buffers and windows
-- **Window** (`src/window.lisp`): Display window abstraction
+- **UI** (`src/ui.lisp`): Abstract UI framework defining generic functions for drawing, events, key handling, and rendering
+- **Buffer** (`src/buffer.lisp`): Text buffer abstraction with line-based operations and HTML rendering
+- **Editor** (`src/editor.lisp`): Top-level editor state managing buffers and coordinating rendering
+- **Frame** (`src/frame.lisp`): Display frame abstraction containing editors (replaces window concept)
 - **View** (`src/view.lisp`): Buffer view with cursor position and rendering
+- **Application** (`src/application.lisp`): Top-level application managing frames and editors
 
 ### Implementation Layer
 - **Web-UI** (`src/web-ui.lisp`): Web-based UI implementation using basic HTTP server and WebSockets
-- **Standard-*** files: Concrete implementations of the abstract interfaces
+- **Standard-*** implementations: Concrete implementations of the abstract interfaces
 
 ### Key System Design
-- Generic function-based architecture with separate interface and implementation layers
-- Key event system with modifier support and character mapping
-- Web-based UI running on localhost:8080 using HTTP server and WebSockets for real-time communication
-- Text rendering with selection and cursor display
+- **Generic function-based architecture** with separate interface and implementation layers
+- **Hierarchical rendering system**: Application → Frame → Editor → Buffer rendering chain
+- **Component-based render methods**: Each component implements `render` and `render-components` methods
+- **Frame-Editor architecture**: Frames contain editors (not direct buffer access)
+- **Key event system** with modifier support and character mapping
+- **Web-based UI** running on localhost:8080 using HTTP server and WebSockets for real-time communication
+- **HTML-based text rendering** with line numbers, selection, and cursor display
 
 ### File Loading Order (per tle.asd)
 1. Package definitions (`tle-package.lisp`, `tle-user-package.lisp`)
@@ -70,8 +74,14 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 - **Persistent State**: Window positions, sizes, z-index, and focus state maintained server-side
 
 ## Technical Implementation Details
-- **Frame System**: Generic frame interface with standard-frame implementation
+- **Frame System**: Generic frame interface with standard-frame implementation containing editors
+- **Render Pipeline**: 
+  - `render` methods for complete object rendering
+  - `render-components` methods for rendering internal components
+  - HTML output with proper line numbering and styling
+  - Automatic delegation through the rendering hierarchy
 - **Client-Server Communication**: RESTful endpoints for window operations (/frame-new, /frame-close, /frame-update, /frame-zindex, /frame-focus)
 - **Real-time Updates**: Server-sent events for immediate UI synchronization across clients
 - **CSS Transitions**: Smooth visual feedback for focus changes and interactions
 - **Coordinate System**: Menu bar offset handling for proper window positioning
+- **Component Architecture**: Clean separation where frames manage editors, editors manage buffers

@@ -71,9 +71,8 @@
   (let ((app (get-application app-name)))
     (when app
       (let* ((editor (application-editor app))
-             (buffer (when editor (current-buffer editor)))
-             (frame1 (make-standard-frame buffer :title "Main Buffer" :x 50 :y 50 :width 500 :height 400))
-             (frame2 (make-standard-frame buffer :title "Secondary View" :x 600 :y 100 :width 400 :height 300)))
+             (frame1 (make-standard-frame editor :title "Main Buffer" :x 50 :y 50 :width 500 :height 400))
+             (frame2 (make-standard-frame editor :title "Secondary View" :x 600 :y 100 :width 400 :height 300)))
         (setf (application-frames app) (list frame1 frame2))
         app))))
 

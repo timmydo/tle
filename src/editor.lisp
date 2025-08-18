@@ -22,3 +22,11 @@
   "Get the current buffer from the editor."
   (first (buffers editor)))
 
+(defmethod render ((editor standard-editor) (ui ui-implementation))
+  "Render a standard editor component."
+  (let ((current-buf (current-buffer editor)))
+    (if current-buf
+        (format nil "<div class=\"editor-content\">~A</div>"
+                (render current-buf ui))
+        "<div class=\"editor-content\">No buffer available</div>")))
+

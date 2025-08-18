@@ -131,7 +131,6 @@
         }
         .window-content {
             padding: 10px;
-            white-space: pre;
             font-size: 16px;
             line-height: 1.4;
             overflow: auto;
@@ -151,6 +150,30 @@
             font-size: 16px; 
             line-height: 1.4; 
             padding: 5px; 
+        }
+        .buffer-content {
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .line {
+            display: flex;
+            white-space: pre;
+        }
+        .line-number {
+            color: #5c6370;
+            background-color: #21252b;
+            padding: 0 8px;
+            margin-right: 10px;
+            border-right: 1px solid #5c6370;
+            min-width: 40px;
+            text-align: right;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .line-content {
+            flex: 1;
+            padding-left: 5px;
         }
     </style>
 </head>
@@ -431,7 +454,7 @@
 (defmethod render ((frame frame) (ui web-ui))
   "Render a frame as HTML for web UI."
   (let* ((frame-content (if (typep frame 'standard-frame)
-                           (escape-html (get-buffer-text (frame-buffer frame)))
+                           (render-components frame ui)
                            (escape-html (format nil "Frame: ~A" frame))))
          (frame-id (symbol-name (frame-id frame)))
          (title (if (typep frame 'standard-frame) (frame-title frame) "Frame"))
@@ -456,9 +479,8 @@
   (let ((frames (application-frames app))
         (editor (application-editor app)))
     (if (null frames)
-        ;; If no frames, create a default window with the current buffer
-        (let* ((buffer (when editor (current-buffer editor)))
-               (content (if buffer (escape-html (get-buffer-text buffer)) "No content"))
+        ;; If no frames, create a default window with the current editor
+        (let* ((content (if editor (render editor ui) "No content"))
                (frame-id "default-frame")
                (title (format nil "~A - Buffer" (application-name app)))
                (focus-class "focused"))

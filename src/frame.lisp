@@ -9,7 +9,7 @@
    (height :initarg :height :accessor frame-height :initform 300)
    (z-index :initarg :z-index :accessor frame-z-index :initform 1000)
    (focused :initarg :focused :accessor frame-focused :initform nil)
-   (%handle :initform nil :accessor frame-handle))
+   )
   (:documentation "A frame with position, size, and handle"))
 
 (defclass window ()
@@ -45,29 +45,20 @@
 
 (defclass standard-frame (frame)
   ((%views :accessor frame-views)
-   (%buffer :accessor frame-buffer :initarg :buffer)))
+   (%editor :accessor frame-editor :initarg :editor)))
 
 (defclass standard-window (window)
   ((%views :accessor views)))
 
-(defun make-standard-frame (buffer &key (title "Buffer") (x 50) (y 50) (width 400) (height 300))
-  (let ((f (make-instance 'standard-frame :title title :x x :y y :width width :height height :buffer buffer))
+(defun make-standard-frame (editor &key (title "Frame") (x 50) (y 50) (width 400) (height 300))
+  (let ((f (make-instance 'standard-frame :title title :x x :y y :width width :height height :editor editor))
 	(view (make-instance 'standard-view)))
     (setf (view-point view) (cons 0 0))
     (setf (view-mark view) nil)
-    (setf (view-buffer view) buffer)
+    (when (and editor (current-buffer editor))
+      (setf (view-buffer view) (current-buffer editor)))
     (setf (frame-views f) (list view))
     f))
-
-(defun make-standard-window (buffer)
-  (let ((e (make-instance 'standard-window))
-	(view (make-instance 'standard-view)))
-    (setf (view-point view) (cons 0 0))
-    (setf (view-mark view) nil)
-    (setf (view-buffer view) buffer)
-    (setf (views e) (list view))
-    e))
-
 
 (defmethod update-frame-position ((frame standard-frame) x y)
   "Update frame position"
@@ -86,4 +77,10 @@
 (defmethod update-frame-focus ((frame standard-frame) focused)
   "Update frame focus state"
   (setf (frame-focused frame) focused))
+
+(defmethod render-components ((frame standard-frame) (ui ui-implementation))
+  "Render the components of a standard frame."
+  (if (and (slot-boundp frame '%editor) (frame-editor frame))
+      (render (frame-editor frame) ui)
+      "No editor available"))
 

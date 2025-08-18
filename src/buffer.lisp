@@ -62,3 +62,13 @@
 
 (defmethod buffer-mark ((buffer standard-buffer))
   )
+
+(defmethod render ((buffer standard-buffer) (ui ui-implementation))
+  "Render a standard buffer with HTML line numbers."
+  (if (slot-boundp buffer '%lines)
+      (format nil "<div class=\"buffer-content\">~{~A~^~%~}</div>"
+              (loop for i from 0 below (buffer-line-count buffer)
+                    collect (format nil "<div class=\"line\"><span class=\"line-number\">~3D</span><span class=\"line-content\">~A</span></div>"
+                                    (1+ i)
+                                    (buffer-line buffer i))))
+      "<div class=\"buffer-content\">Empty buffer</div>"))

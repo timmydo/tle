@@ -56,6 +56,9 @@ text drawn"))
 (defgeneric render (object ui-implementation)
   (:documentation "Generic function to render objects using a specific UI implementation"))
 
+(defgeneric render-components (object ui-implementation)
+  (:documentation "Generic function to render the components of an object using a specific UI implementation"))
+
 (defparameter *named-key-syms*
   '("Backspace" "Delete" "Down" "End" "Escape" "F0" "F1" "F10" "F11" "F12" "F2" "F3" "F4" "F5" "F6" "F7" "F8" "F9"
     "Home" "Left" "NopKey" "PageDown" "PageUp" "Return" "Right" "Space" "Tab" "Up"))
