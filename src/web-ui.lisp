@@ -31,6 +31,58 @@
             overflow: hidden; 
             position: relative;
         }
+        .menu-bar {
+            background-color: #21252b;
+            border-bottom: 1px solid #5c6370;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            user-select: none;
+        }
+        .menu-item {
+            padding: 5px 12px;
+            cursor: pointer;
+            position: relative;
+        }
+        .menu-item:hover {
+            background-color: #3e4451;
+        }
+        .menu-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: #3e4451;
+            border: 1px solid #5c6370;
+            border-radius: 3px;
+            min-width: 150px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1001;
+        }
+        .menu-dropdown.show {
+            display: block;
+        }
+        .menu-option {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #5c6370;
+        }
+        .menu-option:last-child {
+            border-bottom: none;
+        }
+        .menu-option:hover {
+            background-color: #4b5263;
+        }
+        #app-container {
+            margin-top: 30px;
+            height: calc(100vh - 30px);
+            position: relative;
+        }
         .window {
             position: absolute;
             background-color: #3e4451;
@@ -96,6 +148,14 @@
     </style>
 </head>
 <body>
+    <div class=\"menu-bar\">
+        <div class=\"menu-item\" id=\"file-menu\">
+            File
+            <div class=\"menu-dropdown\" id=\"file-dropdown\">
+                <div class=\"menu-option\" onclick=\"createNewWindow()\">New Window</div>
+            </div>
+        </div>
+    </div>
     <div id=\"app-container\">~A</div>
     <script>
         let eventSource = null;
@@ -252,6 +312,26 @@
             });
         }
         
+        function createNewWindow() {
+            fetch('/frame-new', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            });
+            hideAllMenus();
+        }
+        
+        function showMenu(menuId) {
+            hideAllMenus();
+            document.getElementById(menuId).classList.add('show');
+        }
+        
+        function hideAllMenus() {
+            document.querySelectorAll('.menu-dropdown').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+        
         document.addEventListener('keydown', (e) => {
             e.preventDefault();
             let key = e.key;
@@ -269,6 +349,23 @@
         
         connectEventSource();
         initializeWindows();
+        
+        // Menu event handlers
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.menu-bar')) {
+                hideAllMenus();
+            }
+        });
+        
+        document.getElementById('file-menu').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdown = document.getElementById('file-dropdown');
+            if (dropdown.classList.contains('show')) {
+                hideAllMenus();
+            } else {
+                showMenu('file-dropdown');
+            }
+        });
     </script>
 </body>
 </html>")
@@ -281,6 +378,17 @@
     (setf escaped (substitute-string escaped ">" "&gt;"))
     escaped))
 
+(defun render-window-html (frame-id title content x y width height)
+  "Generate HTML for a window frame."
+  (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx;\">
+  <div class=\"window-header\">
+    <span>~A</span>
+    <button class=\"window-close-btn\" title=\"Close\">&#215;</button>
+  </div>
+  <div class=\"window-content\">~A</div>
+  <div class=\"window-resizer\"></div>
+</div>" frame-id x y width height title content))
+
 (defmethod render-application ((app application))
   "Render an application as HTML with all its frames as draggable windows."
   (let ((frames (application-frames app))
@@ -289,15 +397,9 @@
         ;; If no frames, create a default window with the current buffer
         (let* ((buffer (when editor (current-buffer editor)))
                (content (if buffer (escape-html (get-buffer-text buffer)) "No content"))
-               (frame-id "default-frame"))
-          (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: 50px; top: 50px; width: 600px; height: 400px;\">
-  <div class=\"window-header\">
-    <span>~A - Buffer</span>
-    <button class=\"window-close-btn\" title=\"Close\">×</button>
-  </div>
-  <div class=\"window-content\">~A</div>
-  <div class=\"window-resizer\"></div>
-</div>" frame-id (application-name app) content))
+               (frame-id "default-frame")
+               (title (format nil "~A - Buffer" (application-name app))))
+          (render-window-html frame-id title content 50 50 600 400))
         ;; Render all frames as windows using their stored coordinates
         (let ((window-html ""))
           (dolist (frame frames)
@@ -312,14 +414,7 @@
                    (height (if (typep frame 'standard-frame) (frame-height frame) 300)))
               (setf window-html
                     (concatenate 'string window-html
-                                 (format nil "<div class=\"window\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx;\">
-  <div class=\"window-header\">
-    <span>~A</span>
-    <button class=\"window-close-btn\" title=\"Close\">×</button>
-  </div>
-  <div class=\"window-content\">~A</div>
-  <div class=\"window-resizer\"></div>
-</div>" frame-id x y width height title frame-content)))))
+                                 (render-window-html frame-id title frame-content x y width height)))))
           window-html))))
 
 (defun write-line-crlf (stream &optional (line ""))
@@ -429,6 +524,9 @@
                      :close)
                     ((and (string= method "POST") (string= path "/frame-close"))
                      (handle-frame-close-post client-stream body app-name)
+                     :close)
+                    ((and (string= method "POST") (string= path "/frame-new"))
+                     (handle-frame-new-post client-stream body app-name)
                      :close)
                     (t
                      (send-404-response client-stream)
@@ -547,6 +645,17 @@
   (write-line-crlf client-stream)
   (force-output client-stream))
 
+(defun handle-frame-new-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle new frame creation request."
+  (declare (ignore body))
+  (create-new-frame-in-application app-name)
+  (broadcast-update app-name)
+  
+  (write-line-crlf client-stream "HTTP/1.1 200 OK")
+  (write-line-crlf client-stream "Content-Length: 0")
+  (write-line-crlf client-stream)
+  (force-output client-stream))
+
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."
   (let ((app (get-application app-name)))
@@ -602,6 +711,29 @@
         (let ((frames-after (length (application-frames app))))
           (format t "Removed frame ~A from app ~A. Frames: ~A -> ~A~%" 
                   frame-id app-name frames-before frames-after))))))
+
+(defun create-new-frame-in-application (app-name)
+  "Create a new frame in the application."
+  (let ((app (get-application app-name)))
+    (when app
+      (let* ((editor (application-editor app))
+             (buffer (when editor (current-buffer editor)))
+             (frame-id (gensym "FRAME"))
+             (title (format nil "Buffer ~A" (length (application-frames app))))
+             ;; Position new frames with slight offset
+             (x (+ 100 (* 20 (length (application-frames app)))))
+             (y (+ 100 (* 20 (length (application-frames app)))))
+             (new-frame (make-instance 'standard-frame
+                                       :id frame-id
+                                       :title title
+                                       :buffer (or buffer (make-instance 'buffer))
+                                       :x x
+                                       :y y
+                                       :width 400
+                                       :height 300)))
+        (push new-frame (application-frames app))
+        (format t "Created new frame ~A in app ~A. Total frames: ~A~%" 
+                frame-id app-name (length (application-frames app)))))))
 
 (defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."
