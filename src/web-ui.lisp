@@ -158,6 +158,7 @@
     </div>
     <div id=\"app-container\">~A</div>
     <script>
+        const MENU_BAR_HEIGHT = 30;
         let eventSource = null;
         let draggedWindow = null;
         let dragOffset = {x: 0, y: 0};
@@ -188,7 +189,7 @@
             if (!draggedWindow) return;
             
             const x = e.clientX - dragOffset.x;
-            const y = e.clientY - dragOffset.y;
+            const y = e.clientY - dragOffset.y - MENU_BAR_HEIGHT;
             
             draggedWindow.style.left = Math.max(0, x) + 'px';
             draggedWindow.style.top = Math.max(0, y) + 'px';
