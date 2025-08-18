@@ -428,9 +428,20 @@
     (setf escaped (substitute-string escaped ">" "&gt;"))
     escaped))
 
-(defun render-window-html (frame-id title content x y width height z-index focused)
-  "Generate HTML for a window frame."
-  (let ((focus-class (if focused "focused" "unfocused")))
+(defmethod render ((frame frame) (ui web-ui))
+  "Render a frame as HTML for web UI."
+  (let* ((frame-content (if (typep frame 'standard-frame)
+                           (escape-html (get-buffer-text (frame-buffer frame)))
+                           (escape-html (format nil "Frame: ~A" frame))))
+         (frame-id (symbol-name (frame-id frame)))
+         (title (if (typep frame 'standard-frame) (frame-title frame) "Frame"))
+         (x (if (typep frame 'standard-frame) (frame-x frame) 50))
+         (y (if (typep frame 'standard-frame) (frame-y frame) 50))
+         (width (if (typep frame 'standard-frame) (frame-width frame) 400))
+         (height (if (typep frame 'standard-frame) (frame-height frame) 300))
+         (z-index (if (typep frame 'standard-frame) (frame-z-index frame) 1000))
+         (focused (if (typep frame 'standard-frame) (frame-focused frame) nil))
+         (focus-class (if focused "focused" "unfocused")))
     (format nil "<div class=\"window ~A\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
   <div class=\"window-header\">
     <span>~A</span>
@@ -438,9 +449,9 @@
   </div>
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
-</div>" focus-class frame-id x y width height z-index title content)))
+</div>" focus-class frame-id x y width height z-index title frame-content)))
 
-(defmethod render-application ((app application))
+(defmethod render ((app application) (ui web-ui))
   "Render an application as HTML with all its frames as draggable windows."
   (let ((frames (application-frames app))
         (editor (application-editor app)))
@@ -449,25 +460,21 @@
         (let* ((buffer (when editor (current-buffer editor)))
                (content (if buffer (escape-html (get-buffer-text buffer)) "No content"))
                (frame-id "default-frame")
-               (title (format nil "~A - Buffer" (application-name app))))
-          (render-window-html frame-id title content 50 50 600 400 1000 t))
+               (title (format nil "~A - Buffer" (application-name app)))
+               (focus-class "focused"))
+          (format nil "<div class=\"window ~A\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
+  <div class=\"window-header\">
+    <span>~A</span>
+    <button class=\"window-close-btn\" title=\"Close\">&#215;</button>
+  </div>
+  <div class=\"window-content\">~A</div>
+  <div class=\"window-resizer\"></div>
+</div>" focus-class frame-id 50 50 600 400 1000 title content))
         ;; Render all frames as windows using their stored coordinates
         (let ((window-html ""))
           (dolist (frame frames)
-            (let* ((frame-content (if (typep frame 'standard-frame)
-                                     (escape-html (get-buffer-text (frame-buffer frame)))
-                                     (escape-html (format nil "Frame: ~A" frame))))
-                   (frame-id (symbol-name (frame-id frame)))
-                   (title (if (typep frame 'standard-frame) (frame-title frame) "Frame"))
-                   (x (if (typep frame 'standard-frame) (frame-x frame) 50))
-                   (y (if (typep frame 'standard-frame) (frame-y frame) 50))
-                   (width (if (typep frame 'standard-frame) (frame-width frame) 400))
-                   (height (if (typep frame 'standard-frame) (frame-height frame) 300))
-                   (z-index (if (typep frame 'standard-frame) (frame-z-index frame) 1000))
-                   (focused (if (typep frame 'standard-frame) (frame-focused frame) nil)))
-              (setf window-html
-                    (concatenate 'string window-html
-                                 (render-window-html frame-id title frame-content x y width height z-index focused)))))
+            (setf window-html
+                  (concatenate 'string window-html (render frame ui))))
           window-html))))
 
 (defun write-line-crlf (stream &optional (line ""))
@@ -475,6 +482,20 @@
   (write-string line stream)
   (write-char #\Return stream)
   (write-char #\Linefeed stream))
+
+(defun send-http-response (client-stream status-line &optional headers body)
+  "Send a complete HTTP response with status, headers, and optional body."
+  (write-line-crlf client-stream status-line)
+  (when headers
+    (dolist (header headers)
+      (write-line-crlf client-stream header)))
+  ;; Add Content-Length header if not already present and we have a body or need explicit 0
+  (when (not (member "Content-Length" headers :test (lambda (search header) (search search header))))
+    (write-line-crlf client-stream (format nil "Content-Length: ~A" (if body (length body) 0))))
+  (write-line-crlf client-stream)
+  (when body
+    (write-string body client-stream))
+  (force-output client-stream))
 
 (defun substitute-string (string old new)
   "Simple string substitution function."
@@ -600,22 +621,18 @@
   "Send HTML page response."
   (format t "Sending HTML response for app: ~A~%" app-name)
   (let* ((app (get-application app-name))
-         (rendered-content (if app (render-application app) "<div id=\"editor\">No application found</div>"))
-         (html-content (format nil *html-template* rendered-content))
-         (content-length (length html-content)))
-    (write-line-crlf client-stream "HTTP/1.1 200 OK")
-    (write-line-crlf client-stream "Content-Type: text/html")
-    (write-line-crlf client-stream (format nil "Content-Length: ~A" content-length))
-    (write-line-crlf client-stream "Connection: close")
-    (write-line-crlf client-stream)
-    (write-string html-content client-stream)
-    (force-output client-stream)
+         (rendered-content (if app (render app *web-ui-instance*) "<div id=\"editor\">No application found</div>"))
+         (html-content (format nil *html-template* rendered-content)))
+    (send-http-response client-stream "HTTP/1.1 200 OK" 
+                       '("Content-Type: text/html" "Connection: close")
+                       html-content)
     (finish-output client-stream)
     (format t "HTML response sent~%")))
 
 (defun send-sse-response (client-stream &optional (app-name *default-application-name*))
   "Send Server-Sent Events response."
   (push client-stream (client-connections *web-ui-instance*))
+  ;; SSE responses should not have Content-Length header
   (write-line-crlf client-stream "HTTP/1.1 200 OK")
   (write-line-crlf client-stream "Content-Type: text/event-stream")
   (write-line-crlf client-stream "Cache-Control: no-cache")
@@ -651,29 +668,19 @@
 
 (defun send-404-response (client-stream)
   "Send 404 Not Found response."
-  (write-line-crlf client-stream "HTTP/1.1 404 Not Found")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 404 Not Found"))
 
 (defun handle-key-post (client-stream body &optional (app-name *default-application-name*))
   "Handle key input POST request."
   (when body
     (let* ((data (jsown:parse body)))
       (handle-key-input data app-name)))
-  
-  (write-line-crlf client-stream "HTTP/1.1 200 OK")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
 
 (defun handle-update-post (client-stream &optional (app-name *default-application-name*))
   "Handle update request."
   (broadcast-update app-name)
-  (write-line-crlf client-stream "HTTP/1.1 200 OK")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
 
 (defun handle-frame-update-post (client-stream body &optional (app-name *default-application-name*))
   "Handle frame position/size update request."
@@ -686,10 +693,7 @@
            (height (jsown:val data "height")))
       (update-frame-position-and-size app-name frame-id x y width height)))
   
-  (write-line-crlf client-stream "HTTP/1.1 200 OK")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
 
 (defun handle-frame-close-post (client-stream body &optional (app-name *default-application-name*))
   "Handle frame close request."
@@ -698,22 +702,14 @@
            (frame-id (jsown:val data "frameId")))
       (remove-frame-from-application app-name frame-id)
       (broadcast-update app-name)))
-  
-  (write-line-crlf client-stream "HTTP/1.1 200 OK")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
 
 (defun handle-frame-new-post (client-stream body &optional (app-name *default-application-name*))
   "Handle new frame creation request."
   (declare (ignore body))
   (create-new-frame-in-application app-name)
   (broadcast-update app-name)
-  
-  (write-line-crlf client-stream "HTTP/1.1 200 OK")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
 
 (defun handle-frame-zindex-post (client-stream body &optional (app-name *default-application-name*))
   "Handle frame z-index update request."
@@ -722,11 +718,7 @@
            (frame-id (jsown:val data "frameId"))
            (z-index (jsown:val data "zIndex")))
       (update-frame-z-index app-name frame-id z-index)))
-  
-  (write-line-crlf client-stream "HTTP/1.1 200 OK")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
 
 (defun handle-frame-focus-post (client-stream body &optional (app-name *default-application-name*))
   "Handle frame focus update request."
@@ -734,17 +726,13 @@
     (let* ((data (jsown:parse body))
            (frame-id (jsown:val data "frameId")))
       (update-application-frame-focus app-name frame-id)))
-  
-  (write-line-crlf client-stream "HTTP/1.1 200 OK")
-  (write-line-crlf client-stream "Content-Length: 0")
-  (write-line-crlf client-stream)
-  (force-output client-stream))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
 
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."
   (let ((app (get-application app-name)))
     (when app
-      (let* ((rendered-content (render-application app))
+      (let* ((rendered-content (render app *web-ui-instance*))
              (response (jsown:to-json (jsown:new-js ("type" "update") ("content" rendered-content)))))
         (handler-case
             (progn

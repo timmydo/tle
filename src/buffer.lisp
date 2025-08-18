@@ -1,7 +1,7 @@
 (in-package :tle)
 
 (defclass buffer ()
-  ((%name :initform "untitled" :accessor buffer-name))
+  ((id :initarg :id :reader buffer-id :initform (gensym "BUFFER-")))
   (:documentation "A buffer implementation"))
 
 (defgeneric buffer-line-count (buffer)
@@ -26,6 +26,7 @@
 (defclass standard-buffer (buffer)
   ((%lines :initform (make-array 0) :accessor lines)
    (%history :initform nil :accessor history)
+   (%name :initarg :name :accessor buffer-name :initform "Untitled")
    )
   (:documentation "A stardard buffer implementation"))
 
