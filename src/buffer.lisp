@@ -208,17 +208,22 @@
 
 (defun render-line-with-spans (line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col)
   "Render a line character by character with appropriate spans for selection, cursor, and mark."
-  (let ((result "")
-        (line-start-col (if (and start-line (= line-number start-line)) start-col 0))
-        (line-end-col (if (and end-line (= line-number end-line)) end-col (length line-text)))
-        (cursor-pos (when (and point-line (= line-number point-line)) point-col))
-        (mark-pos (when (and mark-line (= line-number mark-line)) mark-col)))
+  (let* ((result "")
+         ;; Only calculate selection bounds if we have a valid selection
+         (has-selection (and start-line end-line))
+         (line-start-col (when has-selection
+                           (if (= line-number start-line) start-col 0)))
+         (line-end-col (when has-selection
+                         (if (= line-number end-line) end-col (length line-text))))
+         (cursor-pos (when (and point-line (= line-number point-line)) point-col))
+         (mark-pos (when (and mark-line (= line-number mark-line)) mark-col)))
     
     (loop for i from 0 to (length line-text) do
       (let ((char (if (< i (length line-text)) 
                       (char line-text i) 
                       nil))
-            (in-selection (and (>= i line-start-col) (< i line-end-col)))
+            (in-selection (and line-start-col line-end-col 
+                               (>= i line-start-col) (< i line-end-col)))
             (is-cursor (and cursor-pos (= i cursor-pos)))
             (is-mark (and mark-pos (= i mark-pos))))
         
