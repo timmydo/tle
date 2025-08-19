@@ -921,6 +921,19 @@
            (forward-char buffer)
            (format t "Ctrl-F: Moved cursor right~%"))
           
+          ;; Enter key for newline insertion
+          ((string= key "Enter")
+           (insert-newline buffer)
+           (format t "Inserted newline~%"))
+          
+          ;; Printable characters (single character keys that are not special)
+          ((and (= (length key) 1)
+                (not ctrl)
+                (not alt)
+                (graphic-char-p (char key 0)))
+           (insert-char buffer (char key 0))
+           (format t "Inserted character: ~A~%" key))
+          
           ;; Default case for unhandled keys
           (t
            (format t "Unhandled key: ~A~%" key))))

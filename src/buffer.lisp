@@ -49,6 +49,12 @@
 (defgeneric previous-line (buffer)
   (:documentation "Move point to the previous line"))
 
+(defgeneric insert-char (buffer char)
+  (:documentation "Insert a character at the current point position"))
+
+(defgeneric insert-newline (buffer)
+  (:documentation "Insert a newline at the current point position"))
+
 
 (defclass standard-buffer (buffer)
   ((%lines :initform (make-array 0) :accessor lines)
@@ -164,6 +170,49 @@
                (prev-line-length (length prev-line-text))
                (new-col (min col prev-line-length)))
           (buffer-set-point buffer (1- line) new-col))))))
+
+(defmethod insert-char ((buffer standard-buffer) char)
+  "Insert a character at the current point position"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (current-line (buffer-line buffer line-num))
+           (new-line (concatenate 'string 
+                                  (subseq current-line 0 col)
+                                  (string char)
+                                  (subseq current-line col))))
+      ;; Update the line with the new character
+      (setf (aref (lines buffer) line-num) new-line)
+      ;; Move point forward by one character
+      (buffer-set-point buffer line-num (1+ col)))))
+
+(defmethod insert-newline ((buffer standard-buffer))
+  "Insert a newline at the current point position, splitting the current line"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (current-line (buffer-line buffer line-num))
+           (left-part (subseq current-line 0 col))
+           (right-part (subseq current-line col))
+           (old-lines (lines buffer))
+           (old-length (length old-lines))
+           (new-lines (make-array (1+ old-length))))
+      ;; Copy lines before the split point
+      (loop for i from 0 below line-num do
+        (setf (aref new-lines i) (aref old-lines i)))
+      ;; Set the left part of the split line
+      (setf (aref new-lines line-num) left-part)
+      ;; Set the right part as the new line
+      (setf (aref new-lines (1+ line-num)) right-part)
+      ;; Copy lines after the split point
+      (loop for i from (1+ line-num) below old-length do
+        (setf (aref new-lines (1+ i)) (aref old-lines i)))
+      ;; Update the buffer with new lines array
+      (setf (lines buffer) new-lines)
+      ;; Move point to the beginning of the new line
+      (buffer-set-point buffer (1+ line-num) 0))))
 
 (defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col)
   "Render a line with point cursor, mark indicators, and highlighting between them."
