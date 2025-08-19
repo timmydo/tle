@@ -174,6 +174,8 @@
 (defmethod insert-char ((buffer standard-buffer) char)
   "Insert a character at the current point position"
   (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before insertion
+    (buffer-clear-mark buffer)
     (let* ((point (buffer-get-point buffer))
            (line-num (first point))
            (col (second point))
@@ -190,6 +192,8 @@
 (defmethod insert-newline ((buffer standard-buffer))
   "Insert a newline at the current point position, splitting the current line"
   (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before insertion
+    (buffer-clear-mark buffer)
     (let* ((point (buffer-get-point buffer))
            (line-num (first point))
            (col (second point))

@@ -920,6 +920,10 @@
           ((and ctrl (string= key "f"))
            (forward-char buffer)
            (format t "Ctrl-F: Moved cursor right~%"))
+          ((and ctrl (string= key " "))
+           (let ((point (buffer-get-point buffer)))
+             (buffer-set-mark buffer (first point) (second point)))
+           (format t "Ctrl-Space: Set mark at current position~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
