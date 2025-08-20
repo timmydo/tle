@@ -930,6 +930,11 @@
            (insert-newline buffer)
            (format t "Inserted newline~%"))
           
+          ;; Delete key for character deletion
+          ((string= key "Delete")
+           (delete-char buffer)
+           (format t "Deleted character at point~%"))
+          
           ;; Printable characters (single character keys that are not special)
           ((and (= (length key) 1)
                 (not ctrl)

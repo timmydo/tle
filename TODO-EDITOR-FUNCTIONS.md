@@ -10,7 +10,7 @@ The buffer.lisp currently implements:
 ## Missing Standard Editor Functions
 
 ### 1. Text Deletion
-- [ ] `delete-char` - Delete character at point
+- [x] `delete-char` - Delete character at point
 - [ ] `delete-backward-char` (backspace) - Delete character before point
 - [ ] `kill-line` - Delete from point to end of line
 - [ ] `kill-whole-line` - Delete entire current line

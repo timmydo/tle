@@ -55,6 +55,9 @@
 (defgeneric insert-newline (buffer)
   (:documentation "Insert a newline at the current point position"))
 
+(defgeneric delete-char (buffer)
+  (:documentation "Delete character at point"))
+
 
 (defclass standard-buffer (buffer)
   ((%lines :initform (make-array 0) :accessor lines)
@@ -217,6 +220,43 @@
       (setf (lines buffer) new-lines)
       ;; Move point to the beginning of the new line
       (buffer-set-point buffer (1+ line-num) 0))))
+
+(defmethod delete-char ((buffer standard-buffer))
+  "Delete character at point, joining lines if at end of line"
+  (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before deletion
+    (buffer-clear-mark buffer)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (current-line (buffer-line buffer line-num))
+           (line-length (length current-line)))
+      (cond
+        ;; If point is within the line, delete the character at point
+        ((< col line-length)
+         (let ((new-line (concatenate 'string
+                                      (subseq current-line 0 col)
+                                      (subseq current-line (1+ col)))))
+           (setf (aref (lines buffer) line-num) new-line)))
+        ;; If point is at end of line and not at last line, join with next line
+        ((and (>= col line-length) (< line-num (1- (buffer-line-count buffer))))
+         (let* ((next-line (buffer-line buffer (1+ line-num)))
+                (joined-line (concatenate 'string current-line next-line))
+                (old-lines (lines buffer))
+                (old-length (length old-lines))
+                (new-lines (make-array (1- old-length))))
+           ;; Copy lines before the join point
+           (loop for i from 0 below line-num do
+             (setf (aref new-lines i) (aref old-lines i)))
+           ;; Set the joined line
+           (setf (aref new-lines line-num) joined-line)
+           ;; Copy lines after the deleted line
+           (loop for i from (1+ line-num) below (1- old-length) do
+             (setf (aref new-lines i) (aref old-lines (1+ i))))
+           ;; Update the buffer with new lines array
+           (setf (lines buffer) new-lines)))
+        ;; Otherwise, at end of buffer, do nothing
+        (t nil)))))
 
 (defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col)
   "Render a line with point cursor, mark indicators, and highlighting between them."
