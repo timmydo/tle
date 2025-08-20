@@ -924,6 +924,14 @@
            (let ((point (buffer-get-point buffer)))
              (buffer-set-mark buffer (first point) (second point)))
            (format t "Ctrl-Space: Set mark at current position~%"))
+          ((and ctrl (string= key "_"))
+           (if (buffer-undo buffer)
+               (format t "Ctrl-_: Undo operation performed~%")
+               (format t "Ctrl-_: Nothing to undo~%")))
+          ((and ctrl (string= key "?"))
+           (if (buffer-redo buffer)
+               (format t "Ctrl-?: Redo operation performed~%")
+               (format t "Ctrl-?: Nothing to redo~%")))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

@@ -59,13 +59,38 @@
   (:documentation "Delete character at point"))
 
 
+;; Undo tree data structures
+(defclass undo-record ()
+  ((operation :initarg :operation :reader undo-operation)
+   (position :initarg :position :reader undo-position)
+   (data :initarg :data :reader undo-data)
+   (timestamp :initform (get-universal-time) :reader undo-timestamp))
+  (:documentation "A single undo operation record"))
+
+(defclass undo-tree-node ()
+  ((record :initarg :record :reader node-record :initform nil)
+   (parent :initarg :parent :accessor node-parent :initform nil)
+   (children :initform '() :accessor node-children)
+   (branch-point :initform nil :accessor node-branch-point))
+  (:documentation "A node in the undo tree"))
+
+(defclass undo-tree ()
+  ((root :initform (make-instance 'undo-tree-node) :reader tree-root)
+   (current :accessor tree-current)
+   (size :initform 0 :accessor tree-size)
+   (max-size :initform 1000 :accessor tree-max-size))
+  (:documentation "Undo tree with branching history like Emacs"))
+
+(defmethod initialize-instance :after ((tree undo-tree) &key)
+  (setf (tree-current tree) (tree-root tree)))
+
 (defclass standard-buffer (buffer)
   ((%lines :initform (make-array 0) :accessor lines)
-   (%history :initform nil :accessor history)
+   (%undo-tree :initform (make-instance 'undo-tree) :accessor buffer-undo-tree)
    (%name :initarg :name :accessor buffer-name :initform "Untitled")
    (%point :initform (list 0 0) :accessor buffer-point)
    (%mark :initform nil :accessor buffer-mark)
-   )
+   (%recording-undo :initform t :accessor buffer-recording-undo-p))
   (:documentation "A stardard buffer implementation"))
 
 (defun make-standard-buffer (name)
@@ -88,11 +113,113 @@
 (defmethod buffer-delete ((buffer standard-buffer) amount)
   )
 
+;; Undo tree operations
+(defun add-undo-record (buffer operation position data)
+  "Add a new undo record to the buffer's undo tree"
+  (when (buffer-recording-undo-p buffer)
+    (let* ((tree (buffer-undo-tree buffer))
+           (record (make-instance 'undo-record 
+                                  :operation operation 
+                                  :position position 
+                                  :data data))
+           (new-node (make-instance 'undo-tree-node 
+                                    :record record 
+                                    :parent (tree-current tree))))
+      ;; Add as child to current node
+      (push new-node (node-children (tree-current tree)))
+      ;; Move current pointer to new node
+      (setf (tree-current tree) new-node)
+      ;; Update tree size
+      (incf (tree-size tree))
+      ;; Trim tree if it exceeds max size
+      (trim-undo-tree tree))))
+
+(defun trim-undo-tree (tree)
+  "Remove oldest entries if tree exceeds max size"
+  (when (> (tree-size tree) (tree-max-size tree))
+    ;; Simple implementation: just reset if too large
+    ;; In practice, you'd want a more sophisticated pruning algorithm
+    (when (> (tree-size tree) (* 1.5 (tree-max-size tree)))
+      (setf (tree-current tree) (tree-root tree)
+            (node-children (tree-root tree)) '()
+            (tree-size tree) 0))))
+
+(defun apply-undo-record (buffer record reverse-p)
+  "Apply an undo record to the buffer, optionally in reverse"
+  (let ((operation (undo-operation record))
+        (position (undo-position record))
+        (data (undo-data record)))
+    (case operation
+      (:insert-char
+       (if reverse-p
+           ;; Undo insert: delete the character and stay at original position
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (delete-char-without-undo buffer))
+           ;; Redo insert: insert the character and move forward
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (insert-char-without-undo buffer data))))
+      (:delete-char
+       (if reverse-p
+           ;; Undo delete: insert the character back and restore position
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (if (char= data #\Newline)
+                 ;; Special case for newline: insert newline and adjust position
+                 (progn
+                   (insert-newline-without-undo buffer)
+                   (buffer-set-point buffer (first position) (second position)))
+                 ;; Normal character: insert and keep position before the char
+                 (progn
+                   (insert-char-without-undo buffer data)
+                   (buffer-set-point buffer (first position) (second position)))))
+           ;; Redo delete: delete the character again
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (delete-char-without-undo buffer))))
+      (:insert-newline
+       (if reverse-p
+           ;; Undo newline: join lines
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (delete-char-without-undo buffer))
+           ;; Redo newline: split line
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (insert-newline-without-undo buffer)))))))
+
 (defmethod buffer-undo ((buffer standard-buffer))
-  )
+  "Undo the last operation"
+  (let* ((tree (buffer-undo-tree buffer))
+         (current (tree-current tree)))
+    (when (and current (node-record current))
+      ;; Apply the current record in reverse
+      (let ((old-recording (buffer-recording-undo-p buffer)))
+        (setf (buffer-recording-undo-p buffer) nil)
+        (apply-undo-record buffer (node-record current) t)
+        (setf (buffer-recording-undo-p buffer) old-recording))
+      ;; Move to parent node
+      (when (node-parent current)
+        (setf (tree-current tree) (node-parent current)))
+      t)))
 
 (defmethod buffer-redo ((buffer standard-buffer))
-  )
+  "Redo the next operation"
+  (let* ((tree (buffer-undo-tree buffer))
+         (current (tree-current tree))
+         (children (node-children current)))
+    (when children
+      ;; Choose the first child (in practice, you might want UI to choose branch)
+      (let* ((next-node (first children))
+             (old-recording (buffer-recording-undo-p buffer)))
+        ;; Apply the record normally
+        (setf (buffer-recording-undo-p buffer) nil)
+        (apply-undo-record buffer (node-record next-node) nil)
+        (setf (buffer-recording-undo-p buffer) old-recording)
+        ;; Move to the child node
+        (setf (tree-current tree) next-node)
+        t))))
 
 (defmethod buffer-move-forward ((buffer standard-buffer) amount)
   )
@@ -174,11 +301,9 @@
                (new-col (min col prev-line-length)))
           (buffer-set-point buffer (1- line) new-col))))))
 
-(defmethod insert-char ((buffer standard-buffer) char)
-  "Insert a character at the current point position"
+(defun insert-char-without-undo (buffer char)
+  "Insert a character without recording undo information"
   (when (> (buffer-line-count buffer) 0)
-    ;; Clear the mark before insertion
-    (buffer-clear-mark buffer)
     (let* ((point (buffer-get-point buffer))
            (line-num (first point))
            (col (second point))
@@ -192,11 +317,20 @@
       ;; Move point forward by one character
       (buffer-set-point buffer line-num (1+ col)))))
 
-(defmethod insert-newline ((buffer standard-buffer))
-  "Insert a newline at the current point position, splitting the current line"
+(defmethod insert-char ((buffer standard-buffer) char)
+  "Insert a character at the current point position"
   (when (> (buffer-line-count buffer) 0)
     ;; Clear the mark before insertion
     (buffer-clear-mark buffer)
+    (let ((point (buffer-get-point buffer)))
+      ;; Record undo information
+      (add-undo-record buffer :insert-char (copy-list point) char)
+      ;; Perform the insertion
+      (insert-char-without-undo buffer char))))
+
+(defun insert-newline-without-undo (buffer)
+  "Insert a newline without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
     (let* ((point (buffer-get-point buffer))
            (line-num (first point))
            (col (second point))
@@ -221,11 +355,20 @@
       ;; Move point to the beginning of the new line
       (buffer-set-point buffer (1+ line-num) 0))))
 
-(defmethod delete-char ((buffer standard-buffer))
-  "Delete character at point, joining lines if at end of line"
+(defmethod insert-newline ((buffer standard-buffer))
+  "Insert a newline at the current point position, splitting the current line"
   (when (> (buffer-line-count buffer) 0)
-    ;; Clear the mark before deletion
+    ;; Clear the mark before insertion
     (buffer-clear-mark buffer)
+    (let ((point (buffer-get-point buffer)))
+      ;; Record undo information
+      (add-undo-record buffer :insert-newline (copy-list point) nil)
+      ;; Perform the insertion
+      (insert-newline-without-undo buffer))))
+
+(defun delete-char-without-undo (buffer)
+  "Delete character at point without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
     (let* ((point (buffer-get-point buffer))
            (line-num (first point))
            (col (second point))
@@ -255,6 +398,30 @@
              (setf (aref new-lines i) (aref old-lines (1+ i))))
            ;; Update the buffer with new lines array
            (setf (lines buffer) new-lines)))
+        ;; Otherwise, at end of buffer, do nothing
+        (t nil)))))
+
+(defmethod delete-char ((buffer standard-buffer))
+  "Delete character at point, joining lines if at end of line"
+  (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before deletion
+    (buffer-clear-mark buffer)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (current-line (buffer-line buffer line-num))
+           (line-length (length current-line))
+           (deleted-char nil))
+      (cond
+        ;; If point is within the line, record the character being deleted
+        ((< col line-length)
+         (setf deleted-char (char current-line col))
+         (add-undo-record buffer :delete-char (copy-list point) deleted-char)
+         (delete-char-without-undo buffer))
+        ;; If point is at end of line and not at last line, record newline deletion
+        ((and (>= col line-length) (< line-num (1- (buffer-line-count buffer))))
+         (add-undo-record buffer :delete-char (copy-list point) #\Newline)
+         (delete-char-without-undo buffer))
         ;; Otherwise, at end of buffer, do nothing
         (t nil)))))
 
