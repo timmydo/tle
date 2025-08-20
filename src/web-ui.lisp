@@ -943,6 +943,11 @@
            (delete-char buffer)
            (format t "Deleted character at point~%"))
           
+          ;; Backspace key for backward character deletion
+          ((string= key "Backspace")
+           (delete-backward-char buffer)
+           (format t "Deleted character before point~%"))
+          
           ;; Printable characters (single character keys that are not special)
           ((and (= (length key) 1)
                 (not ctrl)

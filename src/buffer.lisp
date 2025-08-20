@@ -58,6 +58,9 @@
 (defgeneric delete-char (buffer)
   (:documentation "Delete character at point"))
 
+(defgeneric delete-backward-char (buffer)
+  (:documentation "Delete character before point"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -178,6 +181,33 @@
            (progn
              (buffer-set-point buffer (first position) (second position))
              (delete-char-without-undo buffer))))
+      (:delete-backward-char
+         (if reverse-p
+             ;; Undo delete-backward-char: insert the character back and restore original position
+             (progn
+               (if (char= data #\Newline)
+                   ;; Special case for newline: restore split at original position
+                   (let ((line-num (first position))
+                         (col (second position)))
+                     ;; The newline was at the end of the previous line
+                     (when (> line-num 0)
+                       (let ((prev-line-len (length (buffer-line buffer (1- line-num)))))
+                         (buffer-set-point buffer (1- line-num) prev-line-len)
+                         (insert-newline-without-undo buffer)
+                         ;; Restore cursor to original position (beginning of new line)
+                         (buffer-set-point buffer line-num col))))
+                   ;; Normal character: insert at deletion point and restore cursor after it
+                   (let ((line-num (first position))
+                         (col (second position)))
+                     (when (> col 0)
+                       (buffer-set-point buffer line-num (1- col))
+                       (insert-char-without-undo buffer data)
+                       ;; Restore cursor to original position (after the character)
+                       (buffer-set-point buffer line-num col)))))
+             ;; Redo delete-backward-char: perform the deletion again
+             (progn
+               (buffer-set-point buffer (first position) (second position))
+               (delete-backward-char-without-undo buffer))))
       (:insert-newline
        (if reverse-p
            ;; Undo newline: join lines
@@ -401,6 +431,46 @@
         ;; Otherwise, at end of buffer, do nothing
         (t nil)))))
 
+(defun delete-backward-char-without-undo (buffer)
+  "Delete character before point without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point)))
+      (cond
+        ;; If point is within the line (not at beginning), delete the character before point
+        ((> col 0)
+         (let* ((current-line (buffer-line buffer line-num))
+                (new-line (concatenate 'string
+                                       (subseq current-line 0 (1- col))
+                                       (subseq current-line col))))
+           (setf (aref (lines buffer) line-num) new-line)
+           ;; Move point backward by one character
+           (buffer-set-point buffer line-num (1- col))))
+        ;; If point is at beginning of line and not at first line, join with previous line
+        ((and (= col 0) (> line-num 0))
+         (let* ((prev-line (buffer-line buffer (1- line-num)))
+                (current-line (buffer-line buffer line-num))
+                (joined-line (concatenate 'string prev-line current-line))
+                (old-lines (lines buffer))
+                (old-length (length old-lines))
+                (new-lines (make-array (1- old-length)))
+                (new-col (length prev-line)))
+           ;; Copy lines before the join point
+           (loop for i from 0 below (1- line-num) do
+             (setf (aref new-lines i) (aref old-lines i)))
+           ;; Set the joined line
+           (setf (aref new-lines (1- line-num)) joined-line)
+           ;; Copy lines after the current line
+           (loop for i from (1+ line-num) below old-length do
+             (setf (aref new-lines (1- i)) (aref old-lines i)))
+           ;; Update the buffer with new lines array
+           (setf (lines buffer) new-lines)
+           ;; Move point to end of previous line
+           (buffer-set-point buffer (1- line-num) new-col)))
+        ;; Otherwise, at beginning of buffer, do nothing
+        (t nil)))))
+
 (defmethod delete-char ((buffer standard-buffer))
   "Delete character at point, joining lines if at end of line"
   (when (> (buffer-line-count buffer) 0)
@@ -423,6 +493,32 @@
          (add-undo-record buffer :delete-char (copy-list point) #\Newline)
          (delete-char-without-undo buffer))
         ;; Otherwise, at end of buffer, do nothing
+        (t nil)))))
+
+(defmethod delete-backward-char ((buffer standard-buffer))
+  "Delete character before point (backspace), joining lines if at beginning of line"
+  (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before deletion
+    (buffer-clear-mark buffer)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (deleted-char nil))
+      (cond
+        ;; If point is within the line (not at beginning), record the character being deleted
+        ((> col 0)
+         (let ((current-line (buffer-line buffer line-num)))
+           (setf deleted-char (char current-line (1- col)))
+           ;; Store the original point position for undo restoration
+           (add-undo-record buffer :delete-backward-char (copy-list point) deleted-char)
+           (delete-backward-char-without-undo buffer)))
+        ;; If point is at beginning of line and not at first line, record newline deletion
+        ((and (= col 0) (> line-num 0))
+         (let ((prev-line (buffer-line buffer (1- line-num))))
+           ;; Store the original point position for undo restoration
+           (add-undo-record buffer :delete-backward-char (copy-list point) #\Newline)
+           (delete-backward-char-without-undo buffer)))
+        ;; Otherwise, at beginning of buffer, do nothing
         (t nil)))))
 
 (defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col)
