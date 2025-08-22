@@ -64,6 +64,9 @@
 (defgeneric kill-line (buffer)
   (:documentation "Delete from point to end of line"))
 
+(defgeneric kill-whole-line (buffer)
+  (:documentation "Delete entire current line"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -232,7 +235,19 @@
            ;; Redo kill-line: delete from point to end of line again
            (progn
              (buffer-set-point buffer (first position) (second position))
-             (kill-line-without-undo buffer)))))))
+             (kill-line-without-undo buffer))))
+      (:kill-whole-line
+       (if reverse-p
+           ;; Undo kill-whole-line: insert the killed line back at the original position
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (insert-whole-line-without-undo buffer data)
+             ;; Restore the original point position after insertion
+             (buffer-set-point buffer (first position) (second position)))
+           ;; Redo kill-whole-line: delete entire line again
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (kill-whole-line-without-undo buffer)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -579,6 +594,91 @@
         (add-undo-record buffer :kill-line (copy-list point) killed-text)
         ;; Perform the kill operation
         (kill-line-without-undo buffer)))))
+
+(defun insert-whole-line-without-undo (buffer killed-text)
+  "Insert a killed line back into the buffer for undo"
+  (when (and (> (buffer-line-count buffer) 0) (stringp killed-text))
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (old-lines (lines buffer))
+           (old-length (length old-lines))
+           (has-newline (and (> (length killed-text) 0) 
+                             (char= (char killed-text (1- (length killed-text))) #\Newline)))
+           (line-content (if has-newline 
+                             (subseq killed-text 0 (1- (length killed-text)))
+                             killed-text))
+           ;; Ensure insertion point is valid - clamp to valid range
+           (safe-line-num (min line-num old-length)))
+      (if has-newline
+          ;; Killed text had a newline, so insert as new line
+          (let ((new-lines (make-array (1+ old-length))))
+            ;; Copy lines before insertion point
+            (loop for i from 0 below safe-line-num do
+              (setf (aref new-lines i) (aref old-lines i)))
+            ;; Insert the killed line at safe position
+            (setf (aref new-lines safe-line-num) line-content)
+            ;; Copy remaining lines after insertion point
+            (loop for i from safe-line-num below old-length do
+              (setf (aref new-lines (1+ i)) (aref old-lines i)))
+            ;; Update buffer
+            (setf (lines buffer) new-lines))
+          ;; Killed text had no newline, replace current line (if position is valid)
+          (if (< line-num old-length)
+              (setf (aref old-lines line-num) line-content)
+              ;; If position is invalid, append as new line  
+              (let ((new-lines (make-array (1+ old-length))))
+                (loop for i from 0 below old-length do
+                  (setf (aref new-lines i) (aref old-lines i)))
+                (setf (aref new-lines old-length) line-content)
+                (setf (lines buffer) new-lines)))))))
+
+(defun kill-whole-line-without-undo (buffer)
+  "Delete entire current line without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (old-lines (lines buffer))
+           (old-length (length old-lines)))
+      (when (> old-length 1)
+        ;; More than one line - remove the current line
+        (let ((new-lines (make-array (1- old-length))))
+          ;; Copy lines before the deleted line
+          (loop for i from 0 below line-num do
+            (setf (aref new-lines i) (aref old-lines i)))
+          ;; Copy lines after the deleted line  
+          (loop for i from (1+ line-num) below old-length do
+            (setf (aref new-lines (1- i)) (aref old-lines i)))
+          ;; Update the buffer with new lines array
+          (setf (lines buffer) new-lines)
+          ;; Adjust point position based on which line was deleted
+          (cond
+            ;; If we deleted the last line, move to beginning of previous line (now last line)
+            ((>= line-num (length new-lines))
+             (buffer-set-point buffer (1- (length new-lines)) 0))
+            ;; Otherwise, move to beginning of current line (which is now a different line)
+            (t
+             (buffer-set-point buffer line-num 0)))))
+      (when (= old-length 1)
+        ;; Only one line - clear it but keep the line
+        (setf (aref old-lines 0) "")
+        (buffer-set-point buffer 0 0)))))
+
+(defmethod kill-whole-line ((buffer standard-buffer))
+  "Delete entire current line"
+  (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before deletion
+    (buffer-clear-mark buffer)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (current-line (buffer-line buffer line-num))
+           ;; Store the entire line including implicit newline (except for last line)
+           (killed-text (if (< line-num (1- (buffer-line-count buffer)))
+                            (concatenate 'string current-line (string #\Newline))
+                            current-line)))
+      ;; Record undo information with the killed line
+      (add-undo-record buffer :kill-whole-line (copy-list point) killed-text)
+      ;; Perform the kill operation
+      (kill-whole-line-without-undo buffer))))
 
 (defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col)
   "Render a line with point cursor, mark indicators, and highlighting between them."

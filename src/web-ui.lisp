@@ -882,7 +882,8 @@
   "Handle key input from POST request."
   (let ((key (jsown:val key-data "key"))
         (ctrl (jsown:val key-data "ctrl"))
-        (alt (jsown:val key-data "alt")))
+        (alt (jsown:val key-data "alt"))
+        (shift (jsown:val key-data "shift")))
     (format t "Key event received for app '~A'. Key: '~A', Ctrl: ~A, Alt: ~A~%" app-name key ctrl alt)
     
     ;; Get the current buffer for the application
@@ -935,6 +936,9 @@
           ((and ctrl (string= key "k"))
            (kill-line buffer)
            (format t "Ctrl-K: Kill line~%"))
+          ((and ctrl shift (string= key "K"))
+           (kill-whole-line buffer)
+           (format t "Ctrl-Shift-K: Kill whole line~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
