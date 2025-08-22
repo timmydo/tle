@@ -67,6 +67,9 @@
 (defgeneric kill-whole-line (buffer)
   (:documentation "Delete entire current line"))
 
+(defgeneric kill-word (buffer)
+  (:documentation "Delete word forward"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -247,7 +250,19 @@
            ;; Redo kill-whole-line: delete entire line again
            (progn
              (buffer-set-point buffer (first position) (second position))
-             (kill-whole-line-without-undo buffer)))))))
+             (kill-whole-line-without-undo buffer))))
+      (:kill-word
+       (if reverse-p
+           ;; Undo kill-word: insert the killed text back at the original position
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (insert-text-without-undo buffer data)
+             ;; Restore the original point position after insertion
+             (buffer-set-point buffer (first position) (second position)))
+           ;; Redo kill-word: delete word forward again
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (kill-word-without-undo buffer)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -798,3 +813,108 @@
                                         (1+ i)
                                         (render-line-with-markers line-text i point-line point-col mark-line mark-col))))))
       "<div class=\"buffer-content\">Empty buffer</div>"))
+
+;; Word boundary functions for kill-word
+(defun word-char-p (char)
+  "Return true if character is part of a word"
+  (or (alphanumericp char)
+      (char= char #\_)))
+
+(defun find-word-end (buffer)
+  "Find the end position of the current word from point"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point)))
+      ;; Skip any non-word characters first (within current line)
+      (when (< line-num (buffer-line-count buffer))
+        (let ((current-line (buffer-line buffer line-num)))
+          (loop while (and (< col (length current-line))
+                           (not (word-char-p (char current-line col))))
+                do (incf col))
+          ;; Now find end of word characters (within current line)
+          (loop while (and (< col (length current-line))
+                           (word-char-p (char current-line col)))
+                do (incf col))))
+      (list line-num col))))
+
+(defun kill-word-without-undo (buffer)
+  "Delete word forward without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((start-point (buffer-get-point buffer))
+           (start-line (first start-point))
+           (start-col (second start-point))
+           (end-point (find-word-end buffer))
+           (end-line (first end-point))
+           (end-col (second end-point)))
+      ;; Only delete if we found a valid end point different from start
+      (unless (and (= start-line end-line) (= start-col end-col))
+        (cond
+          ;; Same line deletion
+          ((= start-line end-line)
+           (let* ((current-line (buffer-line buffer start-line))
+                  (new-line (concatenate 'string
+                                         (subseq current-line 0 start-col)
+                                         (subseq current-line end-col))))
+             (setf (aref (lines buffer) start-line) new-line)))
+          ;; Multi-line deletion
+          (t
+           (let* ((start-line-text (buffer-line buffer start-line))
+                  (end-line-text (buffer-line buffer end-line))
+                  (new-line (concatenate 'string
+                                         (subseq start-line-text 0 start-col)
+                                         (subseq end-line-text end-col)))
+                  (old-lines (lines buffer))
+                  (old-length (length old-lines))
+                  (lines-to-remove (- end-line start-line))
+                  (new-lines (make-array (- old-length lines-to-remove))))
+             ;; Copy lines before the deletion
+             (loop for i from 0 below start-line do
+               (setf (aref new-lines i) (aref old-lines i)))
+             ;; Set the joined line
+             (setf (aref new-lines start-line) new-line)
+             ;; Copy lines after the deletion
+             (loop for i from (1+ end-line) below old-length do
+               (setf (aref new-lines (+ start-line 1 (- i end-line 1))) (aref old-lines i)))
+             ;; Update the buffer
+             (setf (lines buffer) new-lines))))))))
+
+(defmethod kill-word ((buffer standard-buffer))
+  "Delete word forward"
+  (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before deletion
+    (buffer-clear-mark buffer)
+    (let* ((start-point (buffer-get-point buffer))
+           (start-line (first start-point))
+           (start-col (second start-point))
+           (end-point (find-word-end buffer))
+           (end-line (first end-point))
+           (end-col (second end-point)))
+      ;; Only proceed if we have something to delete
+      (unless (and (= start-line end-line) (= start-col end-col))
+        (let ((killed-text
+                (cond
+                  ;; Same line deletion
+                  ((= start-line end-line)
+                   (let ((current-line (buffer-line buffer start-line)))
+                     (subseq current-line start-col end-col)))
+                  ;; Multi-line deletion
+                  (t
+                   (let ((text ""))
+                     ;; Add text from start line
+                     (let ((start-line-text (buffer-line buffer start-line)))
+                       (setf text (concatenate 'string text (subseq start-line-text start-col))))
+                     ;; Add newline if we cross lines
+                     (setf text (concatenate 'string text (string #\Newline)))
+                     ;; Add complete middle lines
+                     (loop for line-num from (1+ start-line) below end-line do
+                       (setf text (concatenate 'string text (buffer-line buffer line-num) (string #\Newline))))
+                     ;; Add text from end line
+                     (when (< end-line (buffer-line-count buffer))
+                       (let ((end-line-text (buffer-line buffer end-line)))
+                         (setf text (concatenate 'string text (subseq end-line-text 0 end-col)))))
+                     text)))))
+          ;; Record undo information with the killed text
+          (add-undo-record buffer :kill-word (copy-list start-point) killed-text)
+          ;; Perform the kill operation
+          (kill-word-without-undo buffer))))))

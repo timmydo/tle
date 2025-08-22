@@ -939,6 +939,9 @@
           ((and ctrl shift (string= key "K"))
            (kill-whole-line buffer)
            (format t "Ctrl-Shift-K: Kill whole line~%"))
+          ((and ctrl (string= key "d"))
+           (kill-word buffer)
+           (format t "Ctrl-D: Kill word~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
