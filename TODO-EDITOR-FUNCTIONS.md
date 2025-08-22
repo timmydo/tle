@@ -12,7 +12,7 @@ The buffer.lisp currently implements:
 ### 1. Text Deletion
 - [x] `delete-char` - Delete character at point
 - [x] `delete-backward-char` (backspace) - Delete character before point
-- [ ] `kill-line` - Delete from point to end of line
+- [x] `kill-line` - Delete from point to end of line
 - [ ] `kill-whole-line` - Delete entire current line
 - [ ] `kill-word` - Delete word forward
 - [ ] `backward-kill-word` - Delete word backward

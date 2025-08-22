@@ -61,6 +61,9 @@
 (defgeneric delete-backward-char (buffer)
   (:documentation "Delete character before point"))
 
+(defgeneric kill-line (buffer)
+  (:documentation "Delete from point to end of line"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -217,7 +220,19 @@
            ;; Redo newline: split line
            (progn
              (buffer-set-point buffer (first position) (second position))
-             (insert-newline-without-undo buffer)))))))
+             (insert-newline-without-undo buffer))))
+      (:kill-line
+       (if reverse-p
+           ;; Undo kill-line: insert the killed text back at the original position
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (insert-text-without-undo buffer data)
+             ;; Restore the original point position after insertion
+             (buffer-set-point buffer (first position) (second position)))
+           ;; Redo kill-line: delete from point to end of line again
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (kill-line-without-undo buffer)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -520,6 +535,50 @@
            (delete-backward-char-without-undo buffer)))
         ;; Otherwise, at beginning of buffer, do nothing
         (t nil)))))
+
+(defun insert-text-without-undo (buffer text)
+  "Insert text at point without recording undo information"
+  (when (and (> (buffer-line-count buffer) 0) (stringp text) (> (length text) 0))
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (current-line (buffer-line buffer line-num))
+           (new-line (concatenate 'string 
+                                  (subseq current-line 0 col)
+                                  text
+                                  (subseq current-line col))))
+      ;; Update the line with the new text
+      (setf (aref (lines buffer) line-num) new-line)
+      ;; Move point forward by the length of the inserted text
+      (buffer-set-point buffer line-num (+ col (length text))))))
+
+(defun kill-line-without-undo (buffer)
+  "Delete from point to end of line without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (current-line (buffer-line buffer line-num)))
+      (when (< col (length current-line))
+        (let ((new-line (subseq current-line 0 col)))
+          (setf (aref (lines buffer) line-num) new-line))))))
+
+(defmethod kill-line ((buffer standard-buffer))
+  "Delete from point to end of line"
+  (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before deletion
+    (buffer-clear-mark buffer)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (current-line (buffer-line buffer line-num))
+           (killed-text (when (< col (length current-line))
+                          (subseq current-line col))))
+      (when killed-text
+        ;; Record undo information with the killed text
+        (add-undo-record buffer :kill-line (copy-list point) killed-text)
+        ;; Perform the kill operation
+        (kill-line-without-undo buffer)))))
 
 (defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col)
   "Render a line with point cursor, mark indicators, and highlighting between them."

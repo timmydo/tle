@@ -932,6 +932,9 @@
            (if (buffer-redo buffer)
                (format t "Ctrl-?: Redo operation performed~%")
                (format t "Ctrl-?: Nothing to redo~%")))
+          ((and ctrl (string= key "k"))
+           (kill-line buffer)
+           (format t "Ctrl-K: Kill line~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
