@@ -19,6 +19,12 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 ### Testing
 - **Run tests**: `./test.sh` - runs basic server functionality tests
 
+### Utilities
+- **Parenthesis checker**: `util/paren-checker.lisp` - checks for mismatched parentheses in Common Lisp source files
+  - **Usage**: `sbcl --load util/paren-checker.lisp --eval '(paren-checker:main "filename.lisp")'`
+  - **Programmatic usage**: `(paren-checker:check-parens "code string")` or `(paren-checker:check-parens-file "filename")`
+  - **Run tests**: `cd util/tests && sbcl --load test-paren-checker.lisp`
+
 ### Dependencies
 - **jsown**: JSON parsing library
 - **usocket**: Socket library for network communication
