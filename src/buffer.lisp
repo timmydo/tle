@@ -85,6 +85,9 @@
 (defgeneric yank-pop (buffer)
   (:documentation "Cycle through kill ring entries"))
 
+(defgeneric delete-region (buffer)
+  (:documentation "Delete text between mark and point"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -480,7 +483,32 @@
                    (buffer-set-mark buffer (first start-point) end-col)
                    (kill-region-without-undo buffer)))
              ;; Insert the new text
-             (yank-without-undo buffer new-text)))))))
+             (yank-without-undo buffer new-text))))
+      (:delete-region
+       (if reverse-p
+           ;; Undo delete-region: insert the deleted text and restore cursor/mark positions
+           (let ((insertion-point (getf position :insertion-point))
+                 (original-cursor (getf position :original-cursor))
+                 (original-mark (getf position :original-mark)))
+             ;; Insert the deleted text at the insertion point
+             (buffer-set-point buffer (first insertion-point) (second insertion-point))
+             (insert-text-without-undo buffer data)
+             ;; Restore the original cursor position
+             (buffer-set-point buffer (first original-cursor) (second original-cursor))
+             ;; Restore the original mark position
+             (if original-mark
+                 (buffer-set-mark buffer (first original-mark) (second original-mark))
+                 (buffer-clear-mark buffer)))
+           ;; Redo delete-region: restore original positions and delete the region again
+           (let ((insertion-point (getf position :insertion-point))
+                 (original-cursor (getf position :original-cursor))
+                 (original-mark (getf position :original-mark)))
+             ;; Restore original cursor and mark positions
+             (buffer-set-point buffer (first original-cursor) (second original-cursor))
+             (if original-mark
+                 (buffer-set-mark buffer (first original-mark) (second original-mark))
+                 (buffer-clear-mark buffer))
+             (delete-region-without-undo buffer)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -1297,6 +1325,110 @@
           (add-undo-record buffer :backward-kill-word (copy-list end-point) killed-text)
           ;; Perform the kill operation
           (backward-kill-word-without-undo buffer))))))
+
+(defun delete-region-without-undo (buffer)
+  "Delete text between mark and point without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (mark (buffer-get-mark buffer))
+           (point-line (first point))
+           (point-col (second point)))
+      (if mark
+          ;; If mark exists, delete region between mark and point
+          (let* ((mark-line (first mark))
+                 (mark-col (second mark))
+                 ;; Normalize start and end positions
+                 (selection-range (get-selection-range point-line point-col mark-line mark-col))
+                 (start-line (first selection-range))
+                 (start-col (second selection-range))
+                 (end-line (third selection-range))
+                 (end-col (fourth selection-range)))
+            (cond
+              ;; Same line deletion
+              ((= start-line end-line)
+               (let* ((current-line (buffer-line buffer start-line))
+                      (new-line (concatenate 'string
+                                             (subseq current-line 0 start-col)
+                                             (subseq current-line end-col))))
+                 (setf (aref (lines buffer) start-line) new-line)
+                 ;; Move point to start of deleted region
+                 (buffer-set-point buffer start-line start-col)))
+              ;; Multi-line deletion
+              (t
+               (let* ((start-line-text (buffer-line buffer start-line))
+                      (end-line-text (buffer-line buffer end-line))
+                      (new-line (concatenate 'string
+                                             (subseq start-line-text 0 start-col)
+                                             (subseq end-line-text end-col)))
+                      (old-lines (lines buffer))
+                      (old-length (length old-lines))
+                      (lines-to-remove (- end-line start-line))
+                      (new-lines (make-array (- old-length lines-to-remove))))
+                 ;; Copy lines before the deletion
+                 (loop for i from 0 below start-line do
+                   (setf (aref new-lines i) (aref old-lines i)))
+                 ;; Set the joined line
+                 (setf (aref new-lines start-line) new-line)
+                 ;; Copy lines after the deletion
+                 (loop for i from (1+ end-line) below old-length do
+                   (setf (aref new-lines (+ start-line 1 (- i end-line 1))) (aref old-lines i)))
+                 ;; Update the buffer
+                 (setf (lines buffer) new-lines)
+                 ;; Move point to start of deleted region
+                 (buffer-set-point buffer start-line start-col))))
+            ;; Clear the mark after deletion
+            (buffer-clear-mark buffer))
+          ;; If no mark, do nothing (unlike kill-region which kills whole line)
+          nil))))
+
+(defmethod delete-region ((buffer standard-buffer))
+  "Delete text between mark and point"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (mark (buffer-get-mark buffer)))
+      (if mark
+          (let* ((point-line (first point))
+                 (point-col (second point))
+                 (mark-line (first mark))
+                 (mark-col (second mark))
+                 ;; Normalize start and end positions
+                 (selection-range (get-selection-range point-line point-col mark-line mark-col))
+                 (start-line (first selection-range))
+                 (start-col (second selection-range))
+                 (end-line (third selection-range))
+                 (end-col (fourth selection-range)))
+            ;; Extract the deleted text for undo
+            (let ((deleted-text
+                    (cond
+                      ;; Same line region
+                      ((= start-line end-line)
+                       (let ((current-line (buffer-line buffer start-line)))
+                         (subseq current-line start-col end-col)))
+                      ;; Multi-line region
+                      (t
+                       (let ((text ""))
+                         ;; Add text from start line
+                         (let ((start-line-text (buffer-line buffer start-line)))
+                           (setf text (concatenate 'string text (subseq start-line-text start-col))))
+                         ;; Add newline after start line
+                         (setf text (concatenate 'string text (string #\Newline)))
+                         ;; Add complete middle lines
+                         (loop for line-num from (1+ start-line) below end-line do
+                           (setf text (concatenate 'string text (buffer-line buffer line-num) (string #\Newline))))
+                         ;; Add text from end line
+                         (let ((end-line-text (buffer-line buffer end-line)))
+                           (setf text (concatenate 'string text (subseq end-line-text 0 end-col))))
+                         text)))))
+              ;; Record undo information with the deleted text, original cursor, and mark positions
+              (add-undo-record buffer :delete-region 
+                               (list :insertion-point (list start-line start-col)
+                                     :original-cursor (copy-list point)
+                                     :original-mark (when mark (copy-list mark)))
+                               deleted-text)
+              ;; Perform the delete operation
+              (delete-region-without-undo buffer)))
+          ;; If no mark, do nothing
+          nil))))
 
 
 (defmethod kill-region ((buffer standard-buffer))
