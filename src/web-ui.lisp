@@ -954,6 +954,9 @@
           ((and ctrl (string= key "v"))
            (yank buffer)
            (format t "Ctrl-V: Yank from kill ring~%"))
+          ((and alt (string= key "v"))
+           (yank-pop buffer)
+           (format t "Alt-V: Yank pop (cycle kill ring)~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

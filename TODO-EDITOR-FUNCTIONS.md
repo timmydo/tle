@@ -38,7 +38,7 @@ The buffer.lisp currently implements:
 - [x] `kill-region` - Cut text between mark and point to kill ring
 - [x] `copy-region-as-kill` - Copy text between mark and point to kill ring
 - [x] `yank` - Paste from kill ring
-- [ ] `yank-pop` - Cycle through kill ring entries
+- [x] `yank-pop` - Cycle through kill ring entries
 - [x] Kill ring data structure and management
 
 ### 6. Search and Replace

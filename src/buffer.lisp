@@ -82,6 +82,9 @@
 (defgeneric yank (buffer)
   (:documentation "Paste from kill ring"))
 
+(defgeneric yank-pop (buffer)
+  (:documentation "Cycle through kill ring entries"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -115,7 +118,9 @@
    (%point :initform (list 0 0) :accessor buffer-point)
    (%mark :initform nil :accessor buffer-mark)
    (%recording-undo :initform t :accessor buffer-recording-undo-p)
-   (%kill-ring :initform '() :accessor buffer-kill-ring))
+   (%kill-ring :initform '() :accessor buffer-kill-ring)
+   (%yank-pointer :initform 0 :accessor buffer-yank-pointer)
+   (%last-yank :initform nil :accessor buffer-last-yank))
   (:documentation "A stardard buffer implementation"))
 
 (defun make-standard-buffer (name)
@@ -423,7 +428,59 @@
            ;; Redo yank: insert the text again
            (progn
              (buffer-set-point buffer (first position) (second position))
-             (yank-without-undo buffer data)))))))
+             (yank-without-undo buffer data))))
+      (:yank-pop
+       (if reverse-p
+           ;; Undo yank-pop: replace new text with old text
+           (let* ((old-text (getf data :old-text))
+                  (new-text (getf data :new-text))
+                  (start-point position))
+             (buffer-set-point buffer (first start-point) (second start-point))
+             ;; Delete the new text (current yanked text)
+             (if (find #\Newline new-text)
+                 ;; Multi-line new text
+                 (let* ((lines-inserted (count #\Newline new-text))
+                        (last-line-length (let ((last-newline-pos (position #\Newline new-text :from-end t)))
+                                            (if last-newline-pos
+                                                (length (subseq new-text (1+ last-newline-pos)))
+                                                (length new-text))))
+                        (end-line (+ (first start-point) lines-inserted))
+                        (end-col (if (> lines-inserted 0) 
+                                     last-line-length 
+                                     (+ (second start-point) (length new-text)))))
+                   (buffer-set-mark buffer end-line end-col)
+                   (kill-region-without-undo buffer))
+                 ;; Single-line new text
+                 (let ((end-col (+ (second start-point) (length new-text))))
+                   (buffer-set-mark buffer (first start-point) end-col)
+                   (kill-region-without-undo buffer)))
+             ;; Insert the old text back
+             (yank-without-undo buffer old-text))
+           ;; Redo yank-pop: replace old text with new text
+           (let* ((old-text (getf data :old-text))
+                  (new-text (getf data :new-text))
+                  (start-point position))
+             (buffer-set-point buffer (first start-point) (second start-point))
+             ;; Delete the old text
+             (if (find #\Newline old-text)
+                 ;; Multi-line old text
+                 (let* ((lines-inserted (count #\Newline old-text))
+                        (last-line-length (let ((last-newline-pos (position #\Newline old-text :from-end t)))
+                                            (if last-newline-pos
+                                                (length (subseq old-text (1+ last-newline-pos)))
+                                                (length old-text))))
+                        (end-line (+ (first start-point) lines-inserted))
+                        (end-col (if (> lines-inserted 0) 
+                                     last-line-length 
+                                     (+ (second start-point) (length old-text)))))
+                   (buffer-set-mark buffer end-line end-col)
+                   (kill-region-without-undo buffer))
+                 ;; Single-line old text
+                 (let ((end-col (+ (second start-point) (length old-text))))
+                   (buffer-set-mark buffer (first start-point) end-col)
+                   (kill-region-without-undo buffer)))
+             ;; Insert the new text
+             (yank-without-undo buffer new-text)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -1355,5 +1412,60 @@
         (let ((start-point (copy-list (buffer-get-point buffer))))
           ;; Record undo information
           (add-undo-record buffer :yank start-point yanked-text)
+          ;; Reset yank pointer and track yank info
+          (setf (buffer-yank-pointer buffer) 0)
+          (setf (buffer-last-yank buffer) (list :start-point (copy-list start-point)
+                                                :text yanked-text))
           ;; Perform the yank operation
           (yank-without-undo buffer yanked-text))))))
+
+(defmethod yank-pop ((buffer standard-buffer))
+  "Cycle through kill ring entries, replacing the last yank"
+  (when (and (> (buffer-line-count buffer) 0)
+             (buffer-last-yank buffer)
+             (buffer-kill-ring buffer)
+             (> (length (buffer-kill-ring buffer)) 1))
+    ;; Move to next entry in kill ring
+    (incf (buffer-yank-pointer buffer))
+    (when (>= (buffer-yank-pointer buffer) (length (buffer-kill-ring buffer)))
+      (setf (buffer-yank-pointer buffer) 0))
+    
+    (let* ((last-yank-info (buffer-last-yank buffer))
+           (start-point (getf last-yank-info :start-point))
+           (old-text (getf last-yank-info :text))
+           (new-text (get-from-kill-ring buffer (buffer-yank-pointer buffer))))
+      (when new-text
+        ;; Clear the mark before operation
+        (buffer-clear-mark buffer)
+        ;; Move to start point of last yank
+        (buffer-set-point buffer (first start-point) (second start-point))
+        ;; Delete the old yanked text
+        (let ((old-recording (buffer-recording-undo-p buffer)))
+          (setf (buffer-recording-undo-p buffer) nil)
+          (if (find #\Newline old-text)
+              ;; Multi-line: calculate end position and delete region
+              (let* ((lines-inserted (count #\Newline old-text))
+                     (last-line-length (let ((last-newline-pos (position #\Newline old-text :from-end t)))
+                                         (if last-newline-pos
+                                             (length (subseq old-text (1+ last-newline-pos)))
+                                             (length old-text))))
+                     (end-line (+ (first start-point) lines-inserted))
+                     (end-col (if (> lines-inserted 0) 
+                                  last-line-length 
+                                  (+ (second start-point) (length old-text)))))
+                ;; Set mark to create region to delete
+                (buffer-set-mark buffer end-line end-col)
+                (kill-region-without-undo buffer))
+              ;; Single-line: delete the characters
+              (let ((end-col (+ (second start-point) (length old-text))))
+                (buffer-set-mark buffer (first start-point) end-col)
+                (kill-region-without-undo buffer)))
+          (setf (buffer-recording-undo-p buffer) old-recording))
+        ;; Insert the new text
+        (yank-without-undo buffer new-text)
+        ;; Update last yank info
+        (setf (buffer-last-yank buffer) (list :start-point (copy-list start-point)
+                                              :text new-text))
+        ;; Record undo information for yank-pop
+        (add-undo-record buffer :yank-pop start-point 
+                         (list :old-text old-text :new-text new-text))))))
