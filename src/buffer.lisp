@@ -88,6 +88,9 @@
 (defgeneric delete-region (buffer)
   (:documentation "Delete text between mark and point"))
 
+(defgeneric forward-word (buffer)
+  (:documentation "Move point forward by one word"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -621,6 +624,40 @@
                (prev-line-length (length prev-line-text))
                (new-col (min col prev-line-length)))
           (buffer-set-point buffer (1- line) new-col))))))
+
+(defmethod forward-word ((buffer standard-buffer))
+  "Move point forward by one word"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (found-word nil))
+      ;; Continue searching across lines until we find a word
+      (loop while (and (< line-num (buffer-line-count buffer)) (not found-word)) do
+        (let ((current-line (buffer-line buffer line-num)))
+          ;; Skip any non-word characters first (whitespace, punctuation)
+          (loop while (and (< col (length current-line))
+                           (not (word-char-p (char current-line col))))
+                do (incf col))
+          ;; If we found word characters on this line, skip them and mark as found
+          (when (and (< col (length current-line))
+                     (word-char-p (char current-line col)))
+            (loop while (and (< col (length current-line))
+                             (word-char-p (char current-line col)))
+                  do (incf col))
+            (setf found-word t))
+          ;; If we didn't find a word and reached end of line, move to next line
+          (when (and (not found-word) (>= col (length current-line)))
+            (if (< line-num (1- (buffer-line-count buffer)))
+                (progn
+                  (incf line-num)
+                  (setf col 0))
+                ;; At end of buffer, stop searching
+                (setf found-word t)))))
+      ;; Set the final position
+      (buffer-set-point buffer line-num (min col (if (< line-num (buffer-line-count buffer))
+                                                     (length (buffer-line buffer line-num))
+                                                     0))))))
 
 (defun insert-char-without-undo (buffer char)
   "Insert a character without recording undo information"

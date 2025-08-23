@@ -960,6 +960,9 @@
           ((and alt (string= key "v"))
            (yank-pop buffer)
            (format t "Alt-V: Yank pop (cycle kill ring)~%"))
+          ((and alt (string= key "f"))
+           (forward-word buffer)
+           (format t "Alt-F: Forward word~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
