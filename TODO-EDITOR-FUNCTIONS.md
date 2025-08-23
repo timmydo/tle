@@ -35,7 +35,7 @@ The buffer.lisp currently implements:
 - [ ] `goto-line` - Jump to specific line number
 
 ### 5. Copy/Cut/Paste (Kill Ring)
-- [ ] `kill-region` - Cut text between mark and point to kill ring
+- [x] `kill-region` - Cut text between mark and point to kill ring
 - [ ] `copy-region-as-kill` - Copy text between mark and point to kill ring
 - [ ] `yank` - Paste from kill ring
 - [ ] `yank-pop` - Cycle through kill ring entries

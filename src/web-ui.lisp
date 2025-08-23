@@ -945,6 +945,9 @@
           ((and alt (string= key "Backspace"))
            (backward-kill-word buffer)
            (format t "Alt-Backspace: Backward kill word~%"))
+          ((and ctrl (string= key "x"))
+           (kill-region buffer)
+           (format t "Ctrl-X: Kill region~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

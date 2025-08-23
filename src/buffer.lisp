@@ -73,6 +73,9 @@
 (defgeneric backward-kill-word (buffer)
   (:documentation "Delete word backward"))
 
+(defgeneric kill-region (buffer)
+  (:documentation "Kill text between mark and point, or whole line if no mark"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -158,6 +161,61 @@
       (setf (tree-current tree) (tree-root tree)
             (node-children (tree-root tree)) '()
             (tree-size tree) 0))))
+
+(defun kill-region-without-undo (buffer)
+  "Delete text between mark and point without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (mark (buffer-get-mark buffer))
+           (point-line (first point))
+           (point-col (second point)))
+      (if mark
+          ;; If mark exists, delete region between mark and point
+          (let* ((mark-line (first mark))
+                 (mark-col (second mark))
+                 ;; Normalize start and end positions
+                 (selection-range (get-selection-range point-line point-col mark-line mark-col))
+                 (start-line (first selection-range))
+                 (start-col (second selection-range))
+                 (end-line (third selection-range))
+                 (end-col (fourth selection-range)))
+            (cond
+              ;; Same line deletion
+              ((= start-line end-line)
+               (let* ((current-line (buffer-line buffer start-line))
+                      (new-line (concatenate 'string
+                                             (subseq current-line 0 start-col)
+                                             (subseq current-line end-col))))
+                 (setf (aref (lines buffer) start-line) new-line)
+                 ;; Move point to start of deleted region
+                 (buffer-set-point buffer start-line start-col)))
+              ;; Multi-line deletion
+              (t
+               (let* ((start-line-text (buffer-line buffer start-line))
+                      (end-line-text (buffer-line buffer end-line))
+                      (new-line (concatenate 'string
+                                             (subseq start-line-text 0 start-col)
+                                             (subseq end-line-text end-col)))
+                      (old-lines (lines buffer))
+                      (old-length (length old-lines))
+                      (lines-to-remove (- end-line start-line))
+                      (new-lines (make-array (- old-length lines-to-remove))))
+                 ;; Copy lines before the deletion
+                 (loop for i from 0 below start-line do
+                   (setf (aref new-lines i) (aref old-lines i)))
+                 ;; Set the joined line
+                 (setf (aref new-lines start-line) new-line)
+                 ;; Copy lines after the deletion
+                 (loop for i from (1+ end-line) below old-length do
+                   (setf (aref new-lines (+ start-line 1 (- i end-line 1))) (aref old-lines i)))
+                 ;; Update the buffer
+                 (setf (lines buffer) new-lines)
+                 ;; Move point to start of deleted region
+                 (buffer-set-point buffer start-line start-col))))
+            ;; Clear the mark after deletion
+            (buffer-clear-mark buffer))
+          ;; If no mark, delete whole line
+          (kill-whole-line-without-undo buffer)))))
 
 (defun apply-undo-record (buffer record reverse-p)
   "Apply an undo record to the buffer, optionally in reverse"
@@ -285,7 +343,32 @@
            ;; Redo backward-kill-word: delete word backward again
            (progn
              (buffer-set-point buffer (first position) (second position))
-             (backward-kill-word-without-undo buffer)))))))
+             (backward-kill-word-without-undo buffer))))
+      (:kill-region
+       (if reverse-p
+           ;; Undo kill-region: insert the killed text and restore cursor/mark positions
+           (let ((insertion-point (getf position :insertion-point))
+                 (original-cursor (getf position :original-cursor))
+                 (original-mark (getf position :original-mark)))
+             ;; Insert the killed text at the insertion point
+             (buffer-set-point buffer (first insertion-point) (second insertion-point))
+             (insert-text-without-undo buffer data)
+             ;; Restore the original cursor position
+             (buffer-set-point buffer (first original-cursor) (second original-cursor))
+             ;; Restore the original mark position
+             (if original-mark
+                 (buffer-set-mark buffer (first original-mark) (second original-mark))
+                 (buffer-clear-mark buffer)))
+           ;; Redo kill-region: restore original positions and delete the region again
+           (let ((insertion-point (getf position :insertion-point))
+                 (original-cursor (getf position :original-cursor))
+                 (original-mark (getf position :original-mark)))
+             ;; Restore original cursor and mark positions
+             (buffer-set-point buffer (first original-cursor) (second original-cursor))
+             (if original-mark
+                 (buffer-set-mark buffer (first original-mark) (second original-mark))
+                 (buffer-clear-mark buffer))
+             (kill-region-without-undo buffer)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -590,20 +673,65 @@
         (t nil)))))
 
 (defun insert-text-without-undo (buffer text)
-  "Insert text at point without recording undo information"
+  "Insert text at point without recording undo information, handling multi-line text"
   (when (and (> (buffer-line-count buffer) 0) (stringp text) (> (length text) 0))
     (let* ((point (buffer-get-point buffer))
            (line-num (first point))
-           (col (second point))
-           (current-line (buffer-line buffer line-num))
-           (new-line (concatenate 'string 
-                                  (subseq current-line 0 col)
-                                  text
-                                  (subseq current-line col))))
-      ;; Update the line with the new text
-      (setf (aref (lines buffer) line-num) new-line)
-      ;; Move point forward by the length of the inserted text
-      (buffer-set-point buffer line-num (+ col (length text))))))
+           (col (second point)))
+      (if (find #\Newline text)
+          ;; Multi-line insertion
+          (let* ((lines-to-insert (split-string-on-newlines text))
+                 (current-line (buffer-line buffer line-num))
+                 (before-text (subseq current-line 0 col))
+                 (after-text (subseq current-line col))
+                 (old-lines (lines buffer))
+                 (old-length (length old-lines))
+                 (new-length (+ old-length (1- (length lines-to-insert))))
+                 (new-lines (make-array new-length)))
+            ;; Copy lines before insertion point
+            (loop for i from 0 below line-num do
+              (setf (aref new-lines i) (aref old-lines i)))
+            ;; Insert the first line (before-text + first part of inserted text)
+            (setf (aref new-lines line-num) 
+                  (concatenate 'string before-text (first lines-to-insert)))
+            ;; Insert the middle lines (complete lines from inserted text)
+            (loop for i from 1 below (1- (length lines-to-insert)) do
+              (setf (aref new-lines (+ line-num i)) (nth i lines-to-insert)))
+            ;; Insert the last line (last part of inserted text + after-text)
+            (when (> (length lines-to-insert) 1)
+              (setf (aref new-lines (+ line-num (1- (length lines-to-insert))))
+                    (concatenate 'string (car (last lines-to-insert)) after-text)))
+            ;; Copy lines after insertion point
+            (loop for i from (1+ line-num) below old-length do
+              (setf (aref new-lines (+ i (1- (length lines-to-insert)))) (aref old-lines i)))
+            ;; Update buffer
+            (setf (lines buffer) new-lines)
+            ;; Set point to end of inserted text
+            (let ((final-line (+ line-num (1- (length lines-to-insert))))
+                  (final-col (length (car (last lines-to-insert)))))
+              (buffer-set-point buffer final-line final-col)))
+          ;; Single-line insertion (original behavior)
+          (let* ((current-line (buffer-line buffer line-num))
+                 (new-line (concatenate 'string 
+                                        (subseq current-line 0 col)
+                                        text
+                                        (subseq current-line col))))
+            ;; Update the line with the new text
+            (setf (aref (lines buffer) line-num) new-line)
+            ;; Move point forward by the length of the inserted text
+            (buffer-set-point buffer line-num (+ col (length text))))))))
+
+(defun split-string-on-newlines (text)
+  "Split a string on newlines, returning a list of lines"
+  (let ((lines '())
+        (start 0))
+    (loop for i from 0 below (length text) do
+      (when (char= (char text i) #\Newline)
+        (push (subseq text start i) lines)
+        (setf start (1+ i))))
+    ;; Add the final part (after the last newline or the whole string if no newlines)
+    (push (subseq text start) lines)
+    (nreverse lines)))
 
 (defun kill-line-without-undo (buffer)
   "Delete from point to end of line without recording undo information"
@@ -1049,3 +1177,54 @@
           (add-undo-record buffer :backward-kill-word (copy-list end-point) killed-text)
           ;; Perform the kill operation
           (backward-kill-word-without-undo buffer))))))
+
+
+(defmethod kill-region ((buffer standard-buffer))
+  "Kill text between mark and point, or whole line if no mark is set"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (mark (buffer-get-mark buffer))
+           (point-line (first point))
+           (point-col (second point)))
+      (if mark
+          ;; If mark exists, kill region between mark and point
+          (let* ((mark-line (first mark))
+                 (mark-col (second mark))
+                 ;; Normalize start and end positions
+                 (selection-range (get-selection-range point-line point-col mark-line mark-col))
+                 (start-line (first selection-range))
+                 (start-col (second selection-range))
+                 (end-line (third selection-range))
+                 (end-col (fourth selection-range)))
+            ;; Extract the killed text
+            (let ((killed-text
+                    (cond
+                      ;; Same line region
+                      ((= start-line end-line)
+                       (let ((current-line (buffer-line buffer start-line)))
+                         (subseq current-line start-col end-col)))
+                      ;; Multi-line region
+                      (t
+                       (let ((text ""))
+                         ;; Add text from start line
+                         (let ((start-line-text (buffer-line buffer start-line)))
+                           (setf text (concatenate 'string text (subseq start-line-text start-col))))
+                         ;; Add newline after start line
+                         (setf text (concatenate 'string text (string #\Newline)))
+                         ;; Add complete middle lines
+                         (loop for line-num from (1+ start-line) below end-line do
+                           (setf text (concatenate 'string text (buffer-line buffer line-num) (string #\Newline))))
+                         ;; Add text from end line
+                         (let ((end-line-text (buffer-line buffer end-line)))
+                           (setf text (concatenate 'string text (subseq end-line-text 0 end-col))))
+                         text)))))
+              ;; Record undo information with the killed text, original cursor, and mark positions
+              (add-undo-record buffer :kill-region 
+                               (list :insertion-point (list start-line start-col)
+                                     :original-cursor (copy-list point)
+                                     :original-mark (when mark (copy-list mark)))
+                               killed-text)
+              ;; Perform the kill operation
+              (kill-region-without-undo buffer)))
+          ;; If no mark, fall back to killing whole line
+          (kill-whole-line buffer)))))
