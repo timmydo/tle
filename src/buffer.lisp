@@ -79,6 +79,9 @@
 (defgeneric copy-region-as-kill (buffer)
   (:documentation "Copy text between mark and point to kill ring, or whole line if no mark"))
 
+(defgeneric yank (buffer)
+  (:documentation "Paste from kill ring"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -111,7 +114,8 @@
    (%name :initarg :name :accessor buffer-name :initform "Untitled")
    (%point :initform (list 0 0) :accessor buffer-point)
    (%mark :initform nil :accessor buffer-mark)
-   (%recording-undo :initform t :accessor buffer-recording-undo-p))
+   (%recording-undo :initform t :accessor buffer-recording-undo-p)
+   (%kill-ring :initform '() :accessor buffer-kill-ring))
   (:documentation "A stardard buffer implementation"))
 
 (defun make-standard-buffer (name)
@@ -219,6 +223,28 @@
             (buffer-clear-mark buffer))
           ;; If no mark, delete whole line
           (kill-whole-line-without-undo buffer)))))
+
+(defun add-to-kill-ring (buffer text)
+  "Add text to the kill ring, maintaining a maximum size"
+  (when (and text (> (length text) 0))
+    (let ((kill-ring (buffer-kill-ring buffer)))
+      ;; Add to front of kill ring
+      (push text kill-ring)
+      ;; Keep only the most recent 60 entries
+      (when (> (length kill-ring) 60)
+        (setf kill-ring (butlast kill-ring (- (length kill-ring) 60))))
+      (setf (buffer-kill-ring buffer) kill-ring))))
+
+(defun get-from-kill-ring (buffer &optional (index 0))
+  "Get text from kill ring at given index (0 = most recent)"
+  (let ((kill-ring (buffer-kill-ring buffer)))
+    (when (and kill-ring (< index (length kill-ring)))
+      (nth index kill-ring))))
+
+(defun yank-without-undo (buffer text)
+  "Insert text at point without recording undo information"
+  (when (and text (> (length text) 0))
+    (insert-text-without-undo buffer text)))
 
 (defun apply-undo-record (buffer record reverse-p)
   "Apply an undo record to the buffer, optionally in reverse"
@@ -371,7 +397,33 @@
              (if original-mark
                  (buffer-set-mark buffer (first original-mark) (second original-mark))
                  (buffer-clear-mark buffer))
-             (kill-region-without-undo buffer)))))))
+             (kill-region-without-undo buffer))))
+      (:yank
+       (if reverse-p
+           ;; Undo yank: delete the yanked text
+           (let ((yanked-length (length data))
+                 (start-point position))
+             (buffer-set-point buffer (first start-point) (second start-point))
+             ;; If the yanked text contains newlines, we need to delete multi-line
+             (if (find #\Newline data)
+                 ;; Multi-line yank undo: calculate end position and delete region
+                 (let* ((lines-inserted (count #\Newline data))
+                        (last-line-length (length (subseq data (1+ (position #\Newline data :from-end t)))))
+                        (end-line (+ (first start-point) lines-inserted))
+                        (end-col (if (> lines-inserted 0) 
+                                     last-line-length 
+                                     (+ (second start-point) yanked-length))))
+                   ;; Temporarily set mark to create region to delete
+                   (buffer-set-mark buffer end-line end-col)
+                   (kill-region-without-undo buffer))
+                 ;; Single-line yank undo: delete the characters
+                 (let ((end-col (+ (second start-point) yanked-length)))
+                   (buffer-set-mark buffer (first start-point) end-col)
+                   (kill-region-without-undo buffer))))
+           ;; Redo yank: insert the text again
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (yank-without-undo buffer data)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -759,6 +811,8 @@
            (killed-text (when (< col (length current-line))
                           (subseq current-line col))))
       (when killed-text
+        ;; Add to kill ring
+        (add-to-kill-ring buffer killed-text)
         ;; Record undo information with the killed text
         (add-undo-record buffer :kill-line (copy-list point) killed-text)
         ;; Perform the kill operation
@@ -844,6 +898,8 @@
            (killed-text (if (< line-num (1- (buffer-line-count buffer)))
                             (concatenate 'string current-line (string #\Newline))
                             current-line)))
+      ;; Add to kill ring
+      (add-to-kill-ring buffer killed-text)
       ;; Record undo information with the killed line
       (add-undo-record buffer :kill-whole-line (copy-list point) killed-text)
       ;; Perform the kill operation
@@ -1091,6 +1147,8 @@
                        (let ((end-line-text (buffer-line buffer end-line)))
                          (setf text (concatenate 'string text (subseq end-line-text 0 end-col)))))
                      text)))))
+          ;; Add to kill ring
+          (add-to-kill-ring buffer killed-text)
           ;; Record undo information with the killed text
           (add-undo-record buffer :kill-word (copy-list start-point) killed-text)
           ;; Perform the kill operation
@@ -1176,6 +1234,8 @@
                        (let ((end-line-text (buffer-line buffer end-line)))
                          (setf text (concatenate 'string text (subseq end-line-text 0 end-col)))))
                      text)))))
+          ;; Add to kill ring
+          (add-to-kill-ring buffer killed-text)
           ;; Record undo information with the killed text and original end position
           (add-undo-record buffer :backward-kill-word (copy-list end-point) killed-text)
           ;; Perform the kill operation
@@ -1221,6 +1281,8 @@
                          (let ((end-line-text (buffer-line buffer end-line)))
                            (setf text (concatenate 'string text (subseq end-line-text 0 end-col))))
                          text)))))
+              ;; Add to kill ring
+              (add-to-kill-ring buffer killed-text)
               ;; Record undo information with the killed text, original cursor, and mark positions
               (add-undo-record buffer :kill-region 
                                (list :insertion-point (list start-line start-col)
@@ -1271,9 +1333,8 @@
                          (let ((end-line-text (buffer-line buffer end-line)))
                            (setf text (concatenate 'string text (subseq end-line-text 0 end-col))))
                          text)))))
-              ;; For now, just store the copied text (in a real implementation, this would go to kill-ring)
-              ;; Since there's no kill-ring implementation yet, we'll just print what was copied
-              (format t "Copied to kill ring: '~A'~%" copied-text)
+              ;; Add to kill ring
+              (add-to-kill-ring buffer copied-text)
               ;; Clear the mark like kill-region does
               (buffer-clear-mark buffer)))
           ;; If no mark, copy the whole current line
@@ -1282,4 +1343,17 @@
                  (copied-text (if (< point-line (1- (buffer-line-count buffer)))
                                   (concatenate 'string current-line (string #\Newline))
                                   current-line)))
-            (format t "Copied whole line to kill ring: '~A'~%" copied-text))))))
+            (add-to-kill-ring buffer copied-text))))))
+
+(defmethod yank ((buffer standard-buffer))
+  "Paste from kill ring"
+  (when (> (buffer-line-count buffer) 0)
+    (let ((yanked-text (get-from-kill-ring buffer 0)))
+      (when yanked-text
+        ;; Clear the mark before insertion
+        (buffer-clear-mark buffer)
+        (let ((start-point (copy-list (buffer-get-point buffer))))
+          ;; Record undo information
+          (add-undo-record buffer :yank start-point yanked-text)
+          ;; Perform the yank operation
+          (yank-without-undo buffer yanked-text))))))

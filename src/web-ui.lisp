@@ -951,6 +951,9 @@
           ((and ctrl (string= key "c"))
            (copy-region-as-kill buffer)
            (format t "Ctrl-C: Copy region as kill~%"))
+          ((and ctrl (string= key "v"))
+           (yank buffer)
+           (format t "Ctrl-V: Yank from kill ring~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
