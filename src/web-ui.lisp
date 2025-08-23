@@ -963,6 +963,9 @@
           ((and alt (string= key "f"))
            (forward-word buffer)
            (format t "Alt-F: Forward word~%"))
+          ((and alt (string= key "b"))
+           (backward-word buffer)
+           (format t "Alt-B: Backward word~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

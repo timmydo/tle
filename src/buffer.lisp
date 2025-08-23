@@ -91,6 +91,9 @@
 (defgeneric forward-word (buffer)
   (:documentation "Move point forward by one word"))
 
+(defgeneric backward-word (buffer)
+  (:documentation "Move point backward by one word"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -658,6 +661,57 @@
       (buffer-set-point buffer line-num (min col (if (< line-num (buffer-line-count buffer))
                                                      (length (buffer-line buffer line-num))
                                                      0))))))
+
+(defmethod backward-word ((buffer standard-buffer))
+  "Move point backward by one word"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (found-word nil))
+      ;; Continue searching across lines until we find a word
+      (loop while (and (>= line-num 0) (not found-word)) do
+        (let ((current-line (buffer-line buffer line-num)))
+          ;; If we're at the beginning of line, move to previous line first
+          (when (and (= col 0) (> line-num 0))
+            (decf line-num)
+            (setf current-line (buffer-line buffer line-num))
+            (setf col (length current-line)))
+          ;; If we're at beginning of buffer, stop
+          (when (and (= col 0) (= line-num 0))
+            (setf found-word t))
+          ;; Move back one position if we're not at the beginning
+          (unless found-word
+            (when (> col 0)
+              (decf col))
+            ;; Skip any non-word characters first (whitespace, punctuation)
+            (loop while (and (>= col 0)
+                             (> (length current-line) 0)
+                             (not (word-char-p (char current-line col))))
+                  do (decf col))
+            ;; If we found word characters on this line, skip them backward and mark as found
+            (when (and (>= col 0)
+                       (> (length current-line) 0)
+                       (word-char-p (char current-line col)))
+              (loop while (and (>= col 0)
+                               (> (length current-line) 0)
+                               (word-char-p (char current-line col)))
+                    do (decf col))
+              ;; Move forward one to be at start of word, not before it
+              (incf col)
+              (setf found-word t))
+            ;; If we didn't find a word and reached beginning of line, move to previous line
+            (when (and (not found-word) (< col 0))
+              (if (> line-num 0)
+                  (progn
+                    (decf line-num)
+                    (setf col (length (buffer-line buffer line-num))))
+                  ;; At beginning of buffer, stop searching
+                  (progn
+                    (setf col 0)
+                    (setf found-word t)))))))
+      ;; Set the final position
+      (buffer-set-point buffer line-num (max 0 col)))))
 
 (defun insert-char-without-undo (buffer char)
   "Insert a character without recording undo information"
