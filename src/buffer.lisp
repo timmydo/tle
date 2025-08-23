@@ -70,6 +70,9 @@
 (defgeneric kill-word (buffer)
   (:documentation "Delete word forward"))
 
+(defgeneric backward-kill-word (buffer)
+  (:documentation "Delete word backward"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -262,7 +265,27 @@
            ;; Redo kill-word: delete word forward again
            (progn
              (buffer-set-point buffer (first position) (second position))
-             (kill-word-without-undo buffer)))))))
+             (kill-word-without-undo buffer))))
+      (:backward-kill-word
+       (if reverse-p
+           ;; Undo backward-kill-word: insert the killed text back and restore original position
+           (progn
+             ;; The position stored is the original end position where the cursor was
+             ;; We need to calculate where to insert (at the beginning of what was deleted)
+             (let* ((end-point position)
+                    (killed-text-length (length data))
+                    ;; For simple case (single line), calculate start column
+                    (start-col (max 0 (- (second end-point) killed-text-length)))
+                    (start-point (list (first end-point) start-col)))
+               ;; Move to start position for insertion
+               (buffer-set-point buffer (first start-point) (second start-point))
+               (insert-text-without-undo buffer data)
+               ;; Restore the original end position
+               (buffer-set-point buffer (first end-point) (second end-point))))
+           ;; Redo backward-kill-word: delete word backward again
+           (progn
+             (buffer-set-point buffer (first position) (second position))
+             (backward-kill-word-without-undo buffer)))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -838,6 +861,29 @@
                 do (incf col))))
       (list line-num col))))
 
+(defun find-word-beginning (buffer)
+  "Find the beginning position of the current word from point"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point)))
+      ;; Skip any non-word characters first (within current line, going backward)
+      (when (>= line-num 0)
+        (let ((current-line (buffer-line buffer line-num)))
+          ;; Ensure col is within bounds
+          (setf col (min col (length current-line)))
+          ;; Move backward past any non-word characters
+          (loop while (and (> col 0)
+                           (let ((char-to-check (char current-line (1- col))))
+                             (not (word-char-p char-to-check))))
+                do (decf col))
+          ;; Now find beginning of word characters (within current line)
+          (loop while (and (> col 0)
+                           (let ((char-to-check (char current-line (1- col))))
+                             (word-char-p char-to-check)))
+                do (decf col))))
+      (list line-num col))))
+
 (defun kill-word-without-undo (buffer)
   "Delete word forward without recording undo information"
   (when (> (buffer-line-count buffer) 0)
@@ -918,3 +964,88 @@
           (add-undo-record buffer :kill-word (copy-list start-point) killed-text)
           ;; Perform the kill operation
           (kill-word-without-undo buffer))))))
+
+(defun backward-kill-word-without-undo (buffer)
+  "Delete word backward without recording undo information"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((end-point (buffer-get-point buffer))
+           (end-line (first end-point))
+           (end-col (second end-point))
+           (start-point (find-word-beginning buffer))
+           (start-line (first start-point))
+           (start-col (second start-point)))
+      ;; Only delete if we found a valid start point different from end
+      (unless (and (= start-line end-line) (= start-col end-col))
+        (cond
+          ;; Same line deletion
+          ((= start-line end-line)
+           (let* ((current-line (buffer-line buffer start-line))
+                  (new-line (concatenate 'string
+                                         (subseq current-line 0 start-col)
+                                         (subseq current-line end-col))))
+             (setf (aref (lines buffer) start-line) new-line)
+             ;; Move point to beginning of deleted region
+             (buffer-set-point buffer start-line start-col)))
+          ;; Multi-line deletion
+          (t
+           (let* ((start-line-text (buffer-line buffer start-line))
+                  (end-line-text (buffer-line buffer end-line))
+                  (new-line (concatenate 'string
+                                         (subseq start-line-text 0 start-col)
+                                         (subseq end-line-text end-col)))
+                  (old-lines (lines buffer))
+                  (old-length (length old-lines))
+                  (lines-to-remove (- end-line start-line))
+                  (new-lines (make-array (- old-length lines-to-remove))))
+             ;; Copy lines before the deletion
+             (loop for i from 0 below start-line do
+               (setf (aref new-lines i) (aref old-lines i)))
+             ;; Set the joined line
+             (setf (aref new-lines start-line) new-line)
+             ;; Copy lines after the deletion
+             (loop for i from (1+ end-line) below old-length do
+               (setf (aref new-lines (+ start-line 1 (- i end-line 1))) (aref old-lines i)))
+             ;; Update the buffer
+             (setf (lines buffer) new-lines)
+             ;; Move point to beginning of deleted region
+             (buffer-set-point buffer start-line start-col))))))))
+
+(defmethod backward-kill-word ((buffer standard-buffer))
+  "Delete word backward"
+  (when (> (buffer-line-count buffer) 0)
+    ;; Clear the mark before deletion
+    (buffer-clear-mark buffer)
+    (let* ((end-point (buffer-get-point buffer))
+           (end-line (first end-point))
+           (end-col (second end-point))
+           (start-point (find-word-beginning buffer))
+           (start-line (first start-point))
+           (start-col (second start-point)))
+      ;; Only proceed if we have something to delete
+      (unless (and (= start-line end-line) (= start-col end-col))
+        (let ((killed-text
+                (cond
+                  ;; Same line deletion
+                  ((= start-line end-line)
+                   (let ((current-line (buffer-line buffer start-line)))
+                     (subseq current-line start-col end-col)))
+                  ;; Multi-line deletion
+                  (t
+                   (let ((text ""))
+                     ;; Add text from start line
+                     (let ((start-line-text (buffer-line buffer start-line)))
+                       (setf text (concatenate 'string text (subseq start-line-text start-col))))
+                     ;; Add newline if we cross lines
+                     (setf text (concatenate 'string text (string #\Newline)))
+                     ;; Add complete middle lines
+                     (loop for line-num from (1+ start-line) below end-line do
+                       (setf text (concatenate 'string text (buffer-line buffer line-num) (string #\Newline))))
+                     ;; Add text from end line
+                     (when (< end-line (buffer-line-count buffer))
+                       (let ((end-line-text (buffer-line buffer end-line)))
+                         (setf text (concatenate 'string text (subseq end-line-text 0 end-col)))))
+                     text)))))
+          ;; Record undo information with the killed text and original end position
+          (add-undo-record buffer :backward-kill-word (copy-list end-point) killed-text)
+          ;; Perform the kill operation
+          (backward-kill-word-without-undo buffer))))))

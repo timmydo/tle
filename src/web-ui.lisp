@@ -942,6 +942,9 @@
           ((and ctrl (string= key "d"))
            (kill-word buffer)
            (format t "Ctrl-D: Kill word~%"))
+          ((and alt (string= key "Backspace"))
+           (backward-kill-word buffer)
+           (format t "Alt-Backspace: Backward kill word~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

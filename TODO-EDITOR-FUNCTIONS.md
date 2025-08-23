@@ -15,7 +15,7 @@ The buffer.lisp currently implements:
 - [x] `kill-line` - Delete from point to end of line
 - [x] `kill-whole-line` - Delete entire current line
 - [x] `kill-word` - Delete word forward
-- [ ] `backward-kill-word` - Delete word backward
+- [x] `backward-kill-word` - Delete word backward
 - [ ] `delete-region` - Delete text between mark and point
 
 ### 2. Word Movement
