@@ -948,6 +948,9 @@
           ((and ctrl (string= key "x"))
            (kill-region buffer)
            (format t "Ctrl-X: Kill region~%"))
+          ((and ctrl (string= key "c"))
+           (copy-region-as-kill buffer)
+           (format t "Ctrl-C: Copy region as kill~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

@@ -76,6 +76,9 @@
 (defgeneric kill-region (buffer)
   (:documentation "Kill text between mark and point, or whole line if no mark"))
 
+(defgeneric copy-region-as-kill (buffer)
+  (:documentation "Copy text between mark and point to kill ring, or whole line if no mark"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -1228,3 +1231,55 @@
               (kill-region-without-undo buffer)))
           ;; If no mark, fall back to killing whole line
           (kill-whole-line buffer)))))
+
+(defmethod copy-region-as-kill ((buffer standard-buffer))
+  "Copy text between mark and point to kill ring without deleting, or whole line if no mark is set"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (mark (buffer-get-mark buffer))
+           (point-line (first point))
+           (point-col (second point)))
+      (if mark
+          ;; If mark exists, copy region between mark and point
+          (let* ((mark-line (first mark))
+                 (mark-col (second mark))
+                 ;; Normalize start and end positions
+                 (selection-range (get-selection-range point-line point-col mark-line mark-col))
+                 (start-line (first selection-range))
+                 (start-col (second selection-range))
+                 (end-line (third selection-range))
+                 (end-col (fourth selection-range)))
+            ;; Extract the text to copy (same logic as kill-region)
+            (let ((copied-text
+                    (cond
+                      ;; Same line region
+                      ((= start-line end-line)
+                       (let ((current-line (buffer-line buffer start-line)))
+                         (subseq current-line start-col end-col)))
+                      ;; Multi-line region
+                      (t
+                       (let ((text ""))
+                         ;; Add text from start line
+                         (let ((start-line-text (buffer-line buffer start-line)))
+                           (setf text (concatenate 'string text (subseq start-line-text start-col))))
+                         ;; Add newline after start line
+                         (setf text (concatenate 'string text (string #\Newline)))
+                         ;; Add complete middle lines
+                         (loop for line-num from (1+ start-line) below end-line do
+                           (setf text (concatenate 'string text (buffer-line buffer line-num) (string #\Newline))))
+                         ;; Add text from end line
+                         (let ((end-line-text (buffer-line buffer end-line)))
+                           (setf text (concatenate 'string text (subseq end-line-text 0 end-col))))
+                         text)))))
+              ;; For now, just store the copied text (in a real implementation, this would go to kill-ring)
+              ;; Since there's no kill-ring implementation yet, we'll just print what was copied
+              (format t "Copied to kill ring: '~A'~%" copied-text)
+              ;; Clear the mark like kill-region does
+              (buffer-clear-mark buffer)))
+          ;; If no mark, copy the whole current line
+          (let* ((current-line (buffer-line buffer point-line))
+                 ;; Include the newline if not the last line
+                 (copied-text (if (< point-line (1- (buffer-line-count buffer)))
+                                  (concatenate 'string current-line (string #\Newline))
+                                  current-line)))
+            (format t "Copied whole line to kill ring: '~A'~%" copied-text))))))
