@@ -891,9 +891,16 @@
            (editor (when app (application-editor app)))
            (buffer (when editor (current-buffer editor))))
       
-      (when buffer
-        ;; Handle cursor movement keys
-        (cond
+      (when editor
+        ;; First check if minibuffer is active and should handle the input
+        (if (and (minibuffer-active-p editor) 
+                 (handle-minibuffer-input editor key ctrl alt shift))
+            ;; Minibuffer handled the input, do nothing more
+            (format t "Minibuffer handled key: ~A~%" key)
+            ;; Normal key handling when minibuffer is not active or didn't handle the key
+            (when buffer
+              ;; Handle cursor movement keys
+              (cond
           ;; Arrow keys
           ((string= key "ArrowUp")
            (previous-line buffer)
@@ -972,6 +979,9 @@
           ((and alt (string= key "b"))
            (backward-word buffer)
            (format t "Alt-B: Backward word~%"))
+          ((and alt (string= key "x"))
+           (execute-command editor)
+           (format t "Alt-X: Execute command~%"))
           ((and alt (string= key "a"))
            (move-beginning-of-line buffer)
            (format t "Alt-A: Smart move to beginning of line~%"))
@@ -1013,7 +1023,7 @@
           
           ;; Default case for unhandled keys
           (t
-           (format t "Unhandled key: ~A~%" key))))
+           (format t "Unhandled key: ~A~%" key))))))
       
       ;; Always broadcast update to refresh the display
       (broadcast-update app-name))))

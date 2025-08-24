@@ -161,6 +161,14 @@
     (buffer-set-mark buf 0 7)
     buf))
 
+(defun make-empty-buffer (name)
+  "Create a standard buffer with empty content."
+  (let ((buf (make-instance 'standard-buffer)))
+    (setf (lines buf) #(""))
+    (setf (buffer-name buf) name)
+    (buffer-set-point buf 0 0)
+    buf))
+
 (defmethod buffer-line-count ((buffer standard-buffer))
   (length (lines buffer)))
 
