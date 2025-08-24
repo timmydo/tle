@@ -164,7 +164,7 @@
 (defun make-empty-buffer (name)
   "Create a standard buffer with empty content."
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #(""))
+    (setf (lines buf) (make-array 1 :initial-element ""))
     (setf (buffer-name buf) name)
     (buffer-set-point buf 0 0)
     buf))

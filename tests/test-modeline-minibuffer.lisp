@@ -91,6 +91,35 @@
     (assert (tle::minibuffer-active-p editor))
     (assert (string= (tle::minibuffer-prompt editor) "M-x "))))
 
+(defun test-minibuffer-clears-on-mx ()
+  "Test that M-x clears existing minibuffer text."
+  (let ((editor (tle::make-standard-editor)))
+    ;; Start fresh - ensure no minibuffer is active
+    (assert (not (tle::minibuffer-active-p editor)))
+    
+    ;; First activate minibuffer with some content
+    (tle::activate-minibuffer editor "Command: ")
+    (assert (tle::minibuffer-active-p editor))
+    (assert (string= (tle::get-minibuffer-contents editor) "")) ; Should start empty
+    
+    ;; Add some content
+    (tle::handle-minibuffer-input editor "o" nil nil nil)
+    (tle::handle-minibuffer-input editor "l" nil nil nil)
+    (tle::handle-minibuffer-input editor "d" nil nil nil)
+    
+    ;; Verify we have the expected content only
+    (let ((contents-before (tle::get-minibuffer-contents editor)))
+      (assert (string= contents-before "old")))
+    
+    ;; Now press M-x (execute-command) which should clear the text
+    (tle::execute-command editor)
+    
+    ;; Check that minibuffer is now active with M-x prompt and no content
+    (assert (tle::minibuffer-active-p editor))
+    (assert (string= (tle::minibuffer-prompt editor) "M-x "))
+    (let ((contents-after (tle::get-minibuffer-contents editor)))
+      (assert (string= contents-after "")))))
+
 (defun test-modeline-rendering ()
   "Test modeline HTML rendering."
   (let ((modeline-info (list :filename "test.lisp" :line 42 :column 10)))
@@ -132,6 +161,9 @@
   
   (test-execute-command)
   (format t "✓ Execute command test passed~%")
+  
+  (test-minibuffer-clears-on-mx)
+  (format t "✓ Minibuffer clears on M-x test passed~%")
   
   (test-modeline-rendering)
   (format t "✓ Modeline rendering test passed~%")
