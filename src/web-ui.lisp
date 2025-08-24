@@ -966,6 +966,9 @@
           ((and alt (string= key "b"))
            (backward-word buffer)
            (format t "Alt-B: Backward word~%"))
+          ((and alt shift (string= key "B"))
+           (beginning-of-word buffer)
+           (format t "Alt-Shift-B: Beginning of word~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
