@@ -1038,10 +1038,8 @@
            (end-of-buffer buffer)
            (format t "Alt->: Move to end of buffer~%"))
           ((and alt (string= key "g"))
-           ;; For now, hardcoded to line 5 for testing - in a real implementation,
-           ;; this would prompt the user for a line number
-           (goto-line buffer 5)
-           (format t "Alt-g: Go to line 5 (hardcoded for demo)~%"))
+           (prompt-goto-line editor)
+           (format t "Alt-g: Prompt for goto line~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

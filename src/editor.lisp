@@ -12,7 +12,8 @@
    (%minibuffer :accessor minibuffer :initform nil)
    (%minibuffer-active :accessor minibuffer-active-p :initform nil)
    (%minibuffer-prompt :accessor minibuffer-prompt :initform "")
-   (%minibuffer-completion-function :accessor minibuffer-completion-function :initform nil)))
+   (%minibuffer-completion-function :accessor minibuffer-completion-function :initform nil)
+   (%minibuffer-callback :accessor minibuffer-callback :initform nil)))
 
 (defun make-standard-editor ()
   (let ((e (make-instance 'standard-editor)))
@@ -36,12 +37,13 @@
                 :column (1+ (second point))))
         (list :filename "No buffer" :line 0 :column 0))))
 
-(defun activate-minibuffer (editor prompt &optional completion-function)
-  "Activate the minibuffer with the given prompt and optional completion function."
+(defun activate-minibuffer (editor prompt &optional completion-function callback-function)
+  "Activate the minibuffer with the given prompt, optional completion function, and callback function."
   (setf (minibuffer editor) (make-empty-buffer "*minibuffer*"))
   (setf (minibuffer-active-p editor) t)
   (setf (minibuffer-prompt editor) prompt)
-  (setf (minibuffer-completion-function editor) completion-function))
+  (setf (minibuffer-completion-function editor) completion-function)
+  (setf (minibuffer-callback editor) callback-function))
 
 (defun deactivate-minibuffer (editor)
   "Deactivate the minibuffer and return its contents."
@@ -52,6 +54,7 @@
     (setf (minibuffer-active-p editor) nil)
     (setf (minibuffer-prompt editor) "")
     (setf (minibuffer-completion-function editor) nil)
+    (setf (minibuffer-callback editor) nil)
     contents))
 
 (defun get-minibuffer-contents (editor)
@@ -99,7 +102,9 @@
 
 (defun execute-command (editor)
   "Start M-x command execution by activating the minibuffer."
-  (activate-minibuffer editor "M-x " #'complete-command-name))
+  (activate-minibuffer editor "M-x " #'complete-command-name 
+                       (lambda (command-name editor)
+                         (execute-named-command command-name editor))))
 
 (defun complete-command-name (partial-name)
   "Return a list of command names that match the partial name."
@@ -123,11 +128,14 @@
   "Handle input when minibuffer is active."
   (let ((minibuf (minibuffer editor)))
     (cond
-      ;; Enter key - execute the command
+      ;; Enter key - execute callback or command
       ((string= key "Enter")
-       (let ((command-name (get-minibuffer-contents editor)))
+       (let ((contents (get-minibuffer-contents editor))
+             (callback (minibuffer-callback editor)))
          (deactivate-minibuffer editor)
-         (execute-named-command command-name editor))
+         (if callback
+             (funcall callback contents editor)
+             (execute-named-command contents editor)))
        t)
       
       ;; Escape key - cancel minibuffer
@@ -156,6 +164,18 @@
       
       ;; Other keys are not handled by minibuffer
       (t nil))))
+
+(defun prompt-goto-line (editor)
+  "Prompt user for line number and execute goto-line."
+  (activate-minibuffer editor "Goto line: " nil 
+                       (lambda (line-string editor)
+                         (let ((line-number (ignore-errors (parse-integer (string-trim " " line-string)))))
+                           (if line-number
+                               (let ((buffer (current-buffer editor)))
+                                 (when buffer
+                                   (goto-line buffer line-number)
+                                   (format t "Goto line ~A~%" line-number)))
+                               (format t "Invalid line number: ~A~%" line-string))))))
 
 ;; Register some basic commands
 (register-command "quit" (lambda (editor) (format t "Quit command executed~%")))
