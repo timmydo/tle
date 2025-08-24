@@ -52,6 +52,9 @@
 (defgeneric beginning-of-line (buffer)
   (:documentation "Move point to the beginning of the current line"))
 
+(defgeneric end-of-line (buffer)
+  (:documentation "Move point to the end of the current line"))
+
 (defgeneric insert-char (buffer char)
   (:documentation "Insert a character at the current point position"))
 
@@ -643,6 +646,14 @@
     (let* ((point (buffer-get-point buffer))
            (line (first point)))
       (buffer-set-point buffer line 0))))
+
+(defmethod end-of-line ((buffer standard-buffer))
+  "Move point to the end of the current line"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line (first point))
+           (line-length (length (aref (lines buffer) line))))
+      (buffer-set-point buffer line line-length))))
 
 (defmethod forward-word ((buffer standard-buffer))
   "Move point forward by one word"
