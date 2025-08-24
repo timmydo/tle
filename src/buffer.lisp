@@ -64,6 +64,9 @@
 (defgeneric end-of-buffer (buffer)
   (:documentation "Move point to the end of the buffer"))
 
+(defgeneric goto-line (buffer line-number)
+  (:documentation "Jump to the specified line number (1-indexed)"))
+
 (defgeneric insert-char (buffer char)
   (:documentation "Insert a character at the current point position"))
 
@@ -705,6 +708,17 @@
            (last-line (buffer-line buffer last-line-num))
            (last-line-length (length last-line)))
       (buffer-set-point buffer last-line-num last-line-length))))
+
+(defmethod goto-line ((buffer standard-buffer) line-number)
+  "Jump to the specified line number (1-indexed)"
+  (when (and (> (buffer-line-count buffer) 0) 
+             (integerp line-number) 
+             (> line-number 0))
+    (let* ((target-line-num (1- line-number))  ; Convert to 0-indexed
+           (max-line-num (1- (buffer-line-count buffer)))
+           (actual-line-num (min target-line-num max-line-num)))
+      ;; Move to beginning of the target line
+      (buffer-set-point buffer actual-line-num 0))))
 
 (defmethod forward-word ((buffer standard-buffer))
   "Move point forward by one word"
