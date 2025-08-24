@@ -130,7 +130,6 @@
             background: #c86975;
         }
         .window-content {
-            padding: 10px;
             font-size: 16px;
             line-height: 1.4;
             overflow: auto;
@@ -190,6 +189,47 @@
             color: #282c34;
         }
         .selection.mark {
+        }
+        .editor-pane {
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-content {
+            flex: 1;
+            overflow: auto;
+            padding-bottom: 60px; /* Space for modeline and minibuffer */
+        }
+        .editor-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #5c6370;
+        }
+        .modeline {
+            color: #abb2bf;
+            padding: 4px 10px;
+            font-size: 12px;
+            border-bottom: 1px solid #5c6370;
+            user-select: none;
+        }
+        .minibuffer {
+            color: #abb2bf;
+            padding: 4px 10px;
+            font-size: 14px;
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .minibuffer-prompt {
+            color: #e06c75;
+            margin-right: 5px;
+        }
+        .minibuffer-content {
+            color: #abb2bf;
+            flex: 1;
         }
     </style>
 </head>

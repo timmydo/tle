@@ -103,9 +103,10 @@
 (defun test-minibuffer-rendering ()
   "Test minibuffer HTML rendering."
   (let ((editor (tle::make-standard-editor)))
-    ;; Test inactive minibuffer
+    ;; Test inactive minibuffer (should still render but be empty)
     (let ((html-inactive (tle::render-minibuffer editor)))
-      (assert (string= html-inactive "")))
+      (assert (search "minibuffer" html-inactive)) ; Always has minibuffer div
+      (assert (not (search "M-x" html-inactive)))) ; But no prompt when inactive
     
     ;; Test active minibuffer
     (tle::activate-minibuffer editor "M-x ")

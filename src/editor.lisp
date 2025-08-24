@@ -64,15 +64,13 @@
   "Render a standard editor component with modeline and minibuffer."
   (let ((current-buf (current-buffer editor))
         (modeline-info (get-modeline-info editor)))
-    (format nil "<div class=\"editor-pane\">~A~A~A</div>"
+    (format nil "<div class=\"editor-pane\">~A<div class=\"editor-bottom\">~A~A</div></div>"
             (if current-buf
                 (format nil "<div class=\"editor-content\">~A</div>"
                         (render current-buf ui))
                 "<div class=\"editor-content\">No buffer available</div>")
             (render-modeline modeline-info)
-            (if (minibuffer-active-p editor)
-                (render-minibuffer editor ui)
-                ""))))
+            (render-minibuffer editor ui))))
 
 (defun render-modeline (modeline-info)
   "Render the modeline showing filename, line, and column."
@@ -82,14 +80,15 @@
           (getf modeline-info :column)))
 
 (defun render-minibuffer (editor &optional ui)
-  "Render the minibuffer."
-  (if (and (minibuffer editor) (minibuffer-active-p editor))
-      (format nil "<div class=\"minibuffer\">~A~A</div>"
-              (minibuffer-prompt editor)
-              (if ui
-                  (render (minibuffer editor) ui)
-                  (buffer-line (minibuffer editor) 0)))
-      ""))
+  "Render the minibuffer - always visible, no line numbers."
+  (let ((prompt (if (minibuffer-active-p editor) 
+                    (minibuffer-prompt editor) 
+                    ""))
+        (content (if (and (minibuffer editor) (minibuffer-active-p editor))
+                     (buffer-line (minibuffer editor) 0)
+                     "")))
+    (format nil "<div class=\"minibuffer\"><span class=\"minibuffer-prompt\">~A</span><span class=\"minibuffer-content\">~A</span></div>"
+            prompt content)))
 
 (defvar *command-table* (make-hash-table :test 'equal)
   "Hash table mapping command names to functions.")
