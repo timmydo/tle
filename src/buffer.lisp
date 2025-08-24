@@ -49,6 +49,9 @@
 (defgeneric previous-line (buffer)
   (:documentation "Move point to the previous line"))
 
+(defgeneric beginning-of-line (buffer)
+  (:documentation "Move point to the beginning of the current line"))
+
 (defgeneric insert-char (buffer char)
   (:documentation "Insert a character at the current point position"))
 
@@ -633,6 +636,13 @@
                (prev-line-length (length prev-line-text))
                (new-col (min col prev-line-length)))
           (buffer-set-point buffer (1- line) new-col))))))
+
+(defmethod beginning-of-line ((buffer standard-buffer))
+  "Move point to the beginning of the current line"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line (first point)))
+      (buffer-set-point buffer line 0))))
 
 (defmethod forward-word ((buffer standard-buffer))
   "Move point forward by one word"

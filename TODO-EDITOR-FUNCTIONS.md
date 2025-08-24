@@ -25,7 +25,7 @@ The buffer.lisp currently implements:
 - [x] `end-of-word` - Move to end of current word
 
 ### 3. Line Movement
-- [ ] `beginning-of-line` - Move point to start of line
+- [x] `beginning-of-line` - Move point to start of line
 - [ ] `end-of-line` - Move point to end of line
 - [ ] `move-beginning-of-line` - Smart beginning of line (after indentation)
 
