@@ -30,7 +30,7 @@ The buffer.lisp currently implements:
 - [x] `move-beginning-of-line` - Smart beginning of line (after indentation)
 
 ### 4. Buffer Movement
-- [ ] `beginning-of-buffer` - Move point to start of buffer
+- [x] `beginning-of-buffer` - Move point to start of buffer
 - [ ] `end-of-buffer` - Move point to end of buffer
 - [ ] `goto-line` - Jump to specific line number
 

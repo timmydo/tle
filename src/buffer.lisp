@@ -58,6 +58,9 @@
 (defgeneric move-beginning-of-line (buffer)
   (:documentation "Smart beginning of line - toggle between true beginning and first non-whitespace character"))
 
+(defgeneric beginning-of-buffer (buffer)
+  (:documentation "Move point to the beginning of the buffer"))
+
 (defgeneric insert-char (buffer char)
   (:documentation "Insert a character at the current point position"))
 
@@ -679,6 +682,10 @@
         ;; Otherwise, move to first non-whitespace
         (t
          (buffer-set-point buffer line-num first-non-ws))))))
+
+(defmethod beginning-of-buffer ((buffer standard-buffer))
+  "Move point to the beginning of the buffer"
+  (buffer-set-point buffer 0 0))
 
 (defmethod forward-word ((buffer standard-buffer))
   "Move point forward by one word"
