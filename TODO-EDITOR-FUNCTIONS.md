@@ -31,7 +31,7 @@ The buffer.lisp currently implements:
 
 ### 4. Buffer Movement
 - [x] `beginning-of-buffer` - Move point to start of buffer
-- [ ] `end-of-buffer` - Move point to end of buffer
+- [x] `end-of-buffer` - Move point to end of buffer
 - [ ] `goto-line` - Jump to specific line number
 
 ### 5. Copy/Cut/Paste (Kill Ring)

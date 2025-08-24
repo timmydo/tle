@@ -61,6 +61,9 @@
 (defgeneric beginning-of-buffer (buffer)
   (:documentation "Move point to the beginning of the buffer"))
 
+(defgeneric end-of-buffer (buffer)
+  (:documentation "Move point to the end of the buffer"))
+
 (defgeneric insert-char (buffer char)
   (:documentation "Insert a character at the current point position"))
 
@@ -686,6 +689,14 @@
 (defmethod beginning-of-buffer ((buffer standard-buffer))
   "Move point to the beginning of the buffer"
   (buffer-set-point buffer 0 0))
+
+(defmethod end-of-buffer ((buffer standard-buffer))
+  "Move point to the end of the buffer"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((last-line-num (1- (buffer-line-count buffer)))
+           (last-line (buffer-line buffer last-line-num))
+           (last-line-length (length last-line)))
+      (buffer-set-point buffer last-line-num last-line-length))))
 
 (defmethod forward-word ((buffer standard-buffer))
   "Move point forward by one word"

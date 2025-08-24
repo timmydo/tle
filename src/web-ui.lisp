@@ -984,6 +984,9 @@
           ((and alt (string= key "<"))
            (beginning-of-buffer buffer)
            (format t "Alt-<: Move to beginning of buffer~%"))
+          ((and alt (string= key ">"))
+           (end-of-buffer buffer)
+           (format t "Alt->: Move to end of buffer~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")
