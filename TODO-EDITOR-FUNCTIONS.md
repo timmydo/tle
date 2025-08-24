@@ -22,7 +22,7 @@ The buffer.lisp currently implements:
 - [x] `forward-word` - Move point forward by one word
 - [x] `backward-word` - Move point backward by one word
 - [x] `beginning-of-word` - Move to beginning of current word
-- [ ] `end-of-word` - Move to end of current word
+- [x] `end-of-word` - Move to end of current word
 
 ### 3. Line Movement
 - [ ] `beginning-of-line` - Move point to start of line

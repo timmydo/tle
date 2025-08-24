@@ -969,6 +969,9 @@
           ((and alt shift (string= key "B"))
            (beginning-of-word buffer)
            (format t "Alt-Shift-B: Beginning of word~%"))
+          ((and alt shift (string= key "E"))
+           (end-of-word buffer)
+           (format t "Alt-Shift-E: End of word~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

@@ -97,6 +97,9 @@
 (defgeneric beginning-of-word (buffer)
   (:documentation "Move to beginning of current word"))
 
+(defgeneric end-of-word (buffer)
+  (:documentation "Move to end of current word"))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -783,6 +786,76 @@
                                    (word-char-p (char current-line (1- col))))
                         do (decf col)))
                 (buffer-set-point buffer line-num (max 0 col)))))))))
+
+(defmethod end-of-word ((buffer standard-buffer))
+  "Move to end of current word or next word if already at end"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point)))
+      ;; If we're already at end of buffer, nothing to do
+      (unless (and (= line-num (1- (buffer-line-count buffer)))
+                   (= col (length (buffer-line buffer line-num))))
+        (let ((current-line (buffer-line buffer line-num)))
+          ;; Check if we're currently at a word character
+          (if (and (< col (length current-line))
+                   (word-char-p (char current-line col)))
+              ;; We're at a word character - check if we're already at its end
+              (if (or (= col (1- (length current-line)))
+                      (not (word-char-p (char current-line (1+ col)))))
+                  ;; Already at end of word, move to next word's end
+                  (progn
+                    (when (< col (length current-line)) (incf col))
+                    ;; Skip non-word characters forwards
+                    (loop while (and (< col (length current-line))
+                                     (not (word-char-p (char current-line col))))
+                          do (incf col))
+                    ;; If we didn't find word characters on this line, try next line
+                    (when (and (>= col (length current-line))
+                               (< line-num (1- (buffer-line-count buffer))))
+                      (incf line-num)
+                      (setf current-line (buffer-line buffer line-num))
+                      (setf col 0)
+                      ;; Skip non-word characters at beginning of next line
+                      (loop while (and (< col (length current-line))
+                                       (not (word-char-p (char current-line col))))
+                            do (incf col)))
+                    ;; Find end of the word we found
+                    (when (and (< col (length current-line))
+                               (word-char-p (char current-line col)))
+                      (loop while (and (< col (length current-line))
+                                       (word-char-p (char current-line col)))
+                            do (incf col)))
+                    (buffer-set-point buffer line-num (min col (length current-line))))
+                  ;; In middle of word, move to its end
+                  (progn
+                    (loop while (and (< col (length current-line))
+                                     (word-char-p (char current-line col)))
+                          do (incf col))
+                    (buffer-set-point buffer line-num col)))
+              ;; Not at a word character, find next word's end
+              (progn
+                ;; Skip non-word characters forwards
+                (loop while (and (< col (length current-line))
+                                 (not (word-char-p (char current-line col))))
+                      do (incf col))
+                ;; If we didn't find word characters on this line, try next line
+                (when (and (>= col (length current-line))
+                           (< line-num (1- (buffer-line-count buffer))))
+                  (incf line-num)
+                  (setf current-line (buffer-line buffer line-num))
+                  (setf col 0)
+                  ;; Skip non-word characters at beginning of next line
+                  (loop while (and (< col (length current-line))
+                                   (not (word-char-p (char current-line col))))
+                        do (incf col)))
+                ;; Find end of the word we found
+                (when (and (< col (length current-line))
+                           (word-char-p (char current-line col)))
+                  (loop while (and (< col (length current-line))
+                                   (word-char-p (char current-line col)))
+                        do (incf col)))
+                (buffer-set-point buffer line-num (min col (length current-line))))))))))
 
 (defun insert-char-without-undo (buffer char)
   "Insert a character without recording undo information"
