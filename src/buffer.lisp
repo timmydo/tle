@@ -55,6 +55,9 @@
 (defgeneric end-of-line (buffer)
   (:documentation "Move point to the end of the current line"))
 
+(defgeneric move-beginning-of-line (buffer)
+  (:documentation "Smart beginning of line - toggle between true beginning and first non-whitespace character"))
+
 (defgeneric insert-char (buffer char)
   (:documentation "Insert a character at the current point position"))
 
@@ -654,6 +657,28 @@
            (line (first point))
            (line-length (length (aref (lines buffer) line))))
       (buffer-set-point buffer line line-length))))
+
+(defmethod move-beginning-of-line ((buffer standard-buffer))
+  "Smart beginning of line - toggle between true beginning and first non-whitespace character"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (line-num (first point))
+           (col (second point))
+           (line-text (aref (lines buffer) line-num))
+           (first-non-ws (position-if-not (lambda (c) (or (char= c #\Space) (char= c #\Tab))) line-text)))
+      (cond
+        ;; If no non-whitespace found, go to beginning of line
+        ((null first-non-ws)
+         (buffer-set-point buffer line-num 0))
+        ;; If at beginning (col 0), move to first non-whitespace
+        ((= col 0)
+         (buffer-set-point buffer line-num first-non-ws))
+        ;; If at first non-whitespace, move to beginning
+        ((= col first-non-ws)
+         (buffer-set-point buffer line-num 0))
+        ;; Otherwise, move to first non-whitespace
+        (t
+         (buffer-set-point buffer line-num first-non-ws))))))
 
 (defmethod forward-word ((buffer standard-buffer))
   "Move point forward by one word"
