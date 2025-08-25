@@ -177,6 +177,14 @@
                                    (format t "Goto line ~A~%" line-number)))
                                (format t "Invalid line number: ~A~%" line-string))))))
 
+(defun search-forward-command (search-string editor)
+  "Execute search-forward with the given search string."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (if (search-forward buffer (string-trim " " search-string))
+          (format t "Found: ~A~%" search-string)
+          (format t "Not found: ~A~%" search-string)))))
+
 ;; Register some basic commands
 (register-command "quit" (lambda (editor) (format t "Quit command executed~%")))
 (register-command "save-buffer" (lambda (editor) (format t "Save buffer command executed~%")))

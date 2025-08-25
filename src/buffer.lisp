@@ -118,6 +118,9 @@
 (defgeneric end-of-word (buffer)
   (:documentation "Move to end of current word"))
 
+(defgeneric search-forward (buffer search-string)
+  (:documentation "Search forward from current point for search-string. Return t if found, nil otherwise."))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -546,7 +549,15 @@
              (if original-mark
                  (buffer-set-mark buffer (first original-mark) (second original-mark))
                  (buffer-clear-mark buffer))
-             (delete-region-without-undo buffer)))))))
+             (delete-region-without-undo buffer))))
+      (:search-forward
+       (if reverse-p
+           ;; Undo search: restore original point position
+           (buffer-set-point buffer (first position) (second position))
+           ;; Redo search: move to found position
+           (let* ((search-data data)
+                  (new-point (getf search-data :new-point)))
+             (buffer-set-point buffer (first new-point) (second new-point))))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -1922,3 +1933,40 @@
         ;; Record undo information for yank-pop
         (add-undo-record buffer :yank-pop start-point 
                          (list :old-text old-text :new-text new-text))))))
+
+(defmethod search-forward ((buffer standard-buffer) search-string)
+  "Search forward from current point for search-string. Return t if found, nil otherwise.
+   Move point to beginning of found string if successful."
+  (when (and search-string (> (length search-string) 0) (> (buffer-line-count buffer) 0))
+    (let* ((point (buffer-get-point buffer))
+           (start-line (first point))
+           (start-col (second point))
+           (total-lines (buffer-line-count buffer))
+           (found nil)
+           (found-line nil)
+           (found-col nil))
+      
+      ;; Search starting from current position
+      (loop for line-num from start-line below total-lines
+            until found do
+              (let* ((line-text (buffer-line buffer line-num))
+                     ;; Start from current column on first line, 0 on subsequent lines
+                     (start-pos (if (= line-num start-line) start-col 0))
+                     (search-pos (search search-string line-text :start2 start-pos)))
+                (when search-pos
+                  (setf found t
+                        found-line line-num
+                        found-col search-pos))))
+      
+      ;; If found, move point to the beginning of found string
+      (when found
+        ;; Clear mark before moving
+        (buffer-clear-mark buffer)
+        ;; Record undo information for the point movement
+        (add-undo-record buffer :search-forward (copy-list point) 
+                         (list :search-string search-string
+                               :new-point (list found-line found-col)))
+        ;; Move to found position
+        (buffer-set-point buffer found-line found-col))
+      
+      found)))

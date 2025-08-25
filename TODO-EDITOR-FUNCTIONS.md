@@ -42,7 +42,7 @@ The buffer.lisp currently implements:
 - [x] Kill ring data structure and management
 
 ### 6. Search and Replace
-- [ ] `search-forward` - Search for text forward
+- [x] `search-forward` - Search for text forward
 - [ ] `search-backward` - Search for text backward
 - [ ] `isearch-forward` - Incremental search forward
 - [ ] `isearch-backward` - Incremental search backward

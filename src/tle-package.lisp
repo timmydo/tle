@@ -4,4 +4,5 @@
 
 (defpackage #:tle
   (:use :cl)
-  (:export #:main))
+  (:export #:main
+           #:search-forward))
