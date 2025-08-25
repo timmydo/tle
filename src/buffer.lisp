@@ -162,7 +162,9 @@
    (%recording-undo :initform t :accessor buffer-recording-undo-p)
    (%kill-ring :initform '() :accessor buffer-kill-ring)
    (%yank-pointer :initform 0 :accessor buffer-yank-pointer)
-   (%last-yank :initform nil :accessor buffer-last-yank))
+   (%last-yank :initform nil :accessor buffer-last-yank)
+   (%isearch-term :initform nil :accessor buffer-isearch-term)
+   (%isearch-active :initform nil :accessor buffer-isearch-active-p))
   (:documentation "A stardard buffer implementation"))
 
 (defun make-standard-buffer (name)
@@ -1344,17 +1346,17 @@
       ;; Perform the kill operation
       (kill-whole-line-without-undo buffer))))
 
-(defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col)
+(defun render-line-with-markers (line-text line-number point-line point-col mark-line mark-col buffer)
   "Render a line with point cursor, mark indicators, and highlighting between them."
   (if (and point-line mark-line)
-      (render-line-with-selection line-text line-number point-line point-col mark-line mark-col)
-      (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col)))
+      (render-line-with-selection line-text line-number point-line point-col mark-line mark-col buffer)
+      (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col buffer)))
 
-(defun render-line-with-cursor-only (line-text line-number point-line point-col mark-line mark-col)
+(defun render-line-with-cursor-only (line-text line-number point-line point-col mark-line mark-col buffer)
   "Render a line with just cursor and mark, no selection highlighting."
-  (render-line-with-spans line-text line-number nil nil nil nil point-line point-col mark-line mark-col))
+  (render-line-with-spans line-text line-number nil nil nil nil point-line point-col mark-line mark-col buffer))
 
-(defun render-line-with-selection (line-text line-number point-line point-col mark-line mark-col)
+(defun render-line-with-selection (line-text line-number point-line point-col mark-line mark-col buffer)
   "Render a line with selection highlighting between mark and point."
   (let* ((selection-range (get-selection-range point-line point-col mark-line mark-col))
          (start-line (first selection-range))
@@ -1364,15 +1366,15 @@
     (cond
       ;; Line is before selection
       ((< line-number start-line)
-       (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col))
+       (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col buffer))
       ;; Line is after selection
       ((> line-number end-line)
-       (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col))
+       (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col buffer))
       ;; Line is within selection
       ((and (>= line-number start-line) (<= line-number end-line))
-       (render-line-with-highlight line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col))
+       (render-line-with-highlight line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col buffer))
       ;; Default case
-      (t (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col)))))
+      (t (render-line-with-cursor-only line-text line-number point-line point-col mark-line mark-col buffer)))))
 
 (defun get-selection-range (point-line point-col mark-line mark-col)
   "Get the normalized selection range (start-line start-col end-line end-col)."
@@ -1381,11 +1383,11 @@
       (list point-line point-col mark-line mark-col)
       (list mark-line mark-col point-line point-col)))
 
-(defun render-line-with-highlight (line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col)
+(defun render-line-with-highlight (line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col buffer)
   "Render a line with highlighted selection and background-colored markers."
-  (render-line-with-spans line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col))
+  (render-line-with-spans line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col buffer))
 
-(defun render-line-with-spans (line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col)
+(defun render-line-with-spans (line-text line-number start-line start-col end-line end-col point-line point-col mark-line mark-col buffer)
   "Render a line character by character with appropriate spans for selection, cursor, and mark."
   (let* ((result "")
          ;; Only calculate selection bounds if we have a valid selection
@@ -1395,7 +1397,10 @@
          (line-end-col (when has-selection
                          (if (= line-number end-line) end-col (length line-text))))
          (cursor-pos (when (and point-line (= line-number point-line)) point-col))
-         (mark-pos (when (and mark-line (= line-number mark-line)) mark-col)))
+         (mark-pos (when (and mark-line (= line-number mark-line)) mark-col))
+         ;; Find isearch matches on this line
+         (isearch-matches (when (and buffer (buffer-isearch-active-p buffer) (buffer-isearch-term buffer))
+                            (get-line-isearch-matches line-text (buffer-isearch-term buffer)))))
     
     (loop for i from 0 to (length line-text) do
       (let ((char (if (< i (length line-text)) 
@@ -1404,7 +1409,8 @@
             (in-selection (and line-start-col line-end-col 
                                (>= i line-start-col) (< i line-end-col)))
             (is-cursor (and cursor-pos (= i cursor-pos)))
-            (is-mark (and mark-pos (= i mark-pos))))
+            (is-mark (and mark-pos (= i mark-pos)))
+            (in-isearch-match (and isearch-matches (char-in-isearch-match-p i isearch-matches))))
         
         (cond
           ;; Handle end of line positions (cursor/mark at end)
@@ -1414,10 +1420,11 @@
                                              (cond (is-cursor "cursor")
                                                    (is-mark "mark"))))))
           ;; Handle characters with various combinations of states
-          ((and char (or in-selection is-cursor is-mark))
+          ((and char (or in-selection is-cursor is-mark in-isearch-match))
            (let ((classes (remove nil (list (when in-selection "selection")
                                              (when is-cursor "cursor") 
-                                             (when is-mark "mark")))))
+                                             (when is-mark "mark")
+                                             (when in-isearch-match "isearch-match")))))
              (setf result (concatenate 'string result
                                        (format nil "<span class=\"~{~A~^ ~}\">~A</span>"
                                                classes
@@ -1460,7 +1467,7 @@
                                     (mark-col (when mark (second mark))))
                                 (format nil "<div class=\"line\"><span class=\"line-number\">~3D</span><span class=\"line-content\">~A</span></div>"
                                         (1+ i)
-                                        (render-line-with-markers line-text i point-line point-col mark-line mark-col))))))
+                                        (render-line-with-markers line-text i point-line point-col mark-line mark-col buffer))))))
       "<div class=\"buffer-content\">Empty buffer</div>"))
 
 ;; Word boundary functions for kill-word
@@ -2069,3 +2076,51 @@
         (buffer-set-point buffer found-line found-col))
       
       found)))
+
+(defun find-all-matches (buffer search-string)
+  "Find all matches of search-string in buffer. Returns list of (line col) positions."
+  (when (and search-string (> (length search-string) 0) (> (buffer-line-count buffer) 0))
+    (let ((matches '()))
+      (loop for line-num from 0 below (buffer-line-count buffer) do
+        (let ((line-text (buffer-line buffer line-num))
+              (start-pos 0))
+          (loop
+            (let ((match-pos (search search-string line-text :start2 start-pos)))
+              (if match-pos
+                  (progn
+                    (push (list line-num match-pos) matches)
+                    (setf start-pos (1+ match-pos)))
+                  (return))))))
+      (reverse matches))))
+
+(defun set-isearch-state (buffer search-term active)
+  "Set the isearch state for the buffer."
+  (setf (buffer-isearch-term buffer) search-term)
+  (setf (buffer-isearch-active-p buffer) active))
+
+(defun clear-isearch-state (buffer)
+  "Clear the isearch state for the buffer."
+  (setf (buffer-isearch-term buffer) nil)
+  (setf (buffer-isearch-active-p buffer) nil))
+
+(defun get-line-isearch-matches (line-text search-term)
+  "Get list of (start end) positions of search term matches in line-text."
+  (when (and search-term (> (length search-term) 0))
+    (let ((matches '())
+          (start-pos 0))
+      (loop
+        (let ((match-pos (search search-term line-text :start2 start-pos)))
+          (if match-pos
+              (progn
+                (push (list match-pos (+ match-pos (length search-term))) matches)
+                (setf start-pos (1+ match-pos)))
+              (return))))
+      (reverse matches))))
+
+(defun char-in-isearch-match-p (char-pos isearch-matches)
+  "Check if character position is within any isearch match."
+  (some (lambda (match)
+          (let ((start (first match))
+                (end (second match)))
+            (and (>= char-pos start) (< char-pos end))))
+        isearch-matches))

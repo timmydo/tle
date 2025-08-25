@@ -190,6 +190,10 @@
         }
         .selection.mark {
         }
+        .isearch-match {
+            background-color: #e5c07b;
+            color: #282c34;
+        }
         .editor-pane {
             position: relative;
             height: 100%;

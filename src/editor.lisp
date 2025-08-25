@@ -155,6 +155,7 @@
        (let ((original-pos (isearch-original-position editor))
              (buffer (current-buffer editor)))
          (when (and original-pos buffer)
+           (clear-isearch-state buffer)
            (buffer-set-point buffer (first original-pos) (second original-pos))
            (setf (isearch-original-position editor) nil)
            (format t "Isearch cancelled, position restored~%")))
@@ -230,6 +231,8 @@
         (if (and trimmed-string (> (length trimmed-string) 0))
             ;; Search for the string
             (let ((original-pos (isearch-original-position editor)))
+              ;; Set isearch state for highlighting
+              (set-isearch-state buffer trimmed-string t)
               ;; Restore to original position first
               (when original-pos
                 (buffer-set-point buffer (first original-pos) (second original-pos)))
@@ -237,11 +240,13 @@
               (if (isearch-forward buffer trimmed-string)
                   (format t "Isearch: Found '~A'~%" trimmed-string)
                   (format t "Isearch: '~A' not found~%" trimmed-string)))
-            ;; Empty search string - restore original position
-            (let ((original-pos (isearch-original-position editor)))
-              (when original-pos
-                (buffer-set-point buffer (first original-pos) (second original-pos))
-                (format t "Isearch: Restored to original position~%"))))))))
+            ;; Empty search string - restore original position and clear isearch
+            (progn
+              (clear-isearch-state buffer)
+              (let ((original-pos (isearch-original-position editor)))
+                (when original-pos
+                  (buffer-set-point buffer (first original-pos) (second original-pos))
+                  (format t "Isearch: Restored to original position~%")))))))))
 
 (defun start-isearch-forward (editor)
   "Start incremental search forward with live updates."
@@ -253,6 +258,9 @@
       (activate-minibuffer editor "I-search: " nil 
                            ;; Final callback when Enter is pressed
                            (lambda (search-string editor)
+                             (let ((buffer (current-buffer editor)))
+                               (when buffer
+                                 (clear-isearch-state buffer)))
                              (setf (isearch-original-position editor) nil)
                              (format t "Isearch completed: ~A~%" search-string))
                            ;; Live callback as user types
