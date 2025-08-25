@@ -13,7 +13,9 @@
    (%minibuffer-active :accessor minibuffer-active-p :initform nil)
    (%minibuffer-prompt :accessor minibuffer-prompt :initform "")
    (%minibuffer-completion-function :accessor minibuffer-completion-function :initform nil)
-   (%minibuffer-callback :accessor minibuffer-callback :initform nil)))
+   (%minibuffer-callback :accessor minibuffer-callback :initform nil)
+   (%minibuffer-live-callback :accessor minibuffer-live-callback :initform nil)
+   (%isearch-original-position :accessor isearch-original-position :initform nil)))
 
 (defun make-standard-editor ()
   (let ((e (make-instance 'standard-editor)))
@@ -37,13 +39,14 @@
                 :column (1+ (second point))))
         (list :filename "No buffer" :line 0 :column 0))))
 
-(defun activate-minibuffer (editor prompt &optional completion-function callback-function)
-  "Activate the minibuffer with the given prompt, optional completion function, and callback function."
+(defun activate-minibuffer (editor prompt &optional completion-function callback-function live-callback-function)
+  "Activate the minibuffer with the given prompt, optional completion function, callback function, and live callback function."
   (setf (minibuffer editor) (make-empty-buffer "*minibuffer*"))
   (setf (minibuffer-active-p editor) t)
   (setf (minibuffer-prompt editor) prompt)
   (setf (minibuffer-completion-function editor) completion-function)
-  (setf (minibuffer-callback editor) callback-function))
+  (setf (minibuffer-callback editor) callback-function)
+  (setf (minibuffer-live-callback editor) live-callback-function))
 
 (defun deactivate-minibuffer (editor)
   "Deactivate the minibuffer and return its contents."
@@ -55,6 +58,7 @@
     (setf (minibuffer-prompt editor) "")
     (setf (minibuffer-completion-function editor) nil)
     (setf (minibuffer-callback editor) nil)
+    (setf (minibuffer-live-callback editor) nil)
     contents))
 
 (defun get-minibuffer-contents (editor)
@@ -62,6 +66,13 @@
   (if (and (minibuffer editor) (minibuffer-active-p editor))
       (buffer-line (minibuffer editor) 0)
       ""))
+
+(defun trigger-minibuffer-live-callback (editor)
+  "Trigger the live callback if one is set."
+  (let ((live-callback (minibuffer-live-callback editor)))
+    (when live-callback
+      (let ((contents (get-minibuffer-contents editor)))
+        (funcall live-callback contents editor)))))
 
 (defmethod render ((editor standard-editor) (ui ui-implementation))
   "Render a standard editor component with modeline and minibuffer."
@@ -140,6 +151,13 @@
       
       ;; Escape key - cancel minibuffer
       ((string= key "Escape")
+       ;; If this is an isearch, restore original position
+       (let ((original-pos (isearch-original-position editor))
+             (buffer (current-buffer editor)))
+         (when (and original-pos buffer)
+           (buffer-set-point buffer (first original-pos) (second original-pos))
+           (setf (isearch-original-position editor) nil)
+           (format t "Isearch cancelled, position restored~%")))
        (deactivate-minibuffer editor)
        (format t "Minibuffer cancelled~%")
        t)
@@ -147,11 +165,13 @@
       ;; Backspace - delete character in minibuffer
       ((string= key "Backspace")
        (delete-backward-char minibuf)
+       (trigger-minibuffer-live-callback editor)
        t)
       
       ;; Delete - delete character at point in minibuffer
       ((string= key "Delete")
        (delete-char minibuf)
+       (trigger-minibuffer-live-callback editor)
        t)
       
       ;; Regular characters - insert into minibuffer
@@ -160,6 +180,7 @@
             (not alt)
             (graphic-char-p (char key 0)))
        (insert-char minibuf (char key 0))
+       (trigger-minibuffer-live-callback editor)
        t)
       
       ;; Other keys are not handled by minibuffer
@@ -192,6 +213,50 @@
       (if (search-backward buffer (string-trim " " search-string))
           (format t "Found: ~A~%" search-string)
           (format t "Not found: ~A~%" search-string)))))
+
+(defun isearch-forward-command (search-string editor)
+  "Execute isearch-forward with the given search string."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (if (isearch-forward buffer (string-trim " " search-string))
+          (format t "Found: ~A~%" search-string)
+          (format t "Not found: ~A~%" search-string)))))
+
+(defun live-isearch-forward (search-string editor)
+  "Live incremental search forward - called as user types in minibuffer."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (let ((trimmed-string (string-trim " " search-string)))
+        (if (and trimmed-string (> (length trimmed-string) 0))
+            ;; Search for the string
+            (let ((original-pos (isearch-original-position editor)))
+              ;; Restore to original position first
+              (when original-pos
+                (buffer-set-point buffer (first original-pos) (second original-pos)))
+              ;; Perform search from original position
+              (if (isearch-forward buffer trimmed-string)
+                  (format t "Isearch: Found '~A'~%" trimmed-string)
+                  (format t "Isearch: '~A' not found~%" trimmed-string)))
+            ;; Empty search string - restore original position
+            (let ((original-pos (isearch-original-position editor)))
+              (when original-pos
+                (buffer-set-point buffer (first original-pos) (second original-pos))
+                (format t "Isearch: Restored to original position~%"))))))))
+
+(defun start-isearch-forward (editor)
+  "Start incremental search forward with live updates."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      ;; Store original cursor position
+      (setf (isearch-original-position editor) (copy-list (buffer-get-point buffer)))
+      ;; Activate minibuffer with live callback
+      (activate-minibuffer editor "I-search: " nil 
+                           ;; Final callback when Enter is pressed
+                           (lambda (search-string editor)
+                             (setf (isearch-original-position editor) nil)
+                             (format t "Isearch completed: ~A~%" search-string))
+                           ;; Live callback as user types
+                           #'live-isearch-forward))))
 
 ;; Register some basic commands
 (register-command "quit" (lambda (editor) (format t "Quit command executed~%")))

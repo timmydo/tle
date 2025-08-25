@@ -44,7 +44,7 @@ The buffer.lisp currently implements:
 ### 6. Search and Replace
 - [x] `search-forward` - Search for text forward
 - [x] `search-backward` - Search for text backward
-- [ ] `isearch-forward` - Incremental search forward
+- [x] `isearch-forward` - Incremental search forward
 - [ ] `isearch-backward` - Incremental search backward
 - [ ] `query-replace` - Interactive find and replace
 - [ ] `replace-string` - Replace all occurrences
