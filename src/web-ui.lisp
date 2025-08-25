@@ -987,7 +987,7 @@
                (format t "Ctrl-?: Redo operation performed~%")
                (format t "Ctrl-?: Nothing to redo~%")))
           ((and ctrl (string= key "s"))
-           (activate-minibuffer editor "Search: " 'search-forward-command)
+           (activate-minibuffer editor "Search: " nil 'search-forward-command)
            (format t "Ctrl-S: Search forward~%"))
           ((and ctrl (string= key "k"))
            (kill-line buffer)

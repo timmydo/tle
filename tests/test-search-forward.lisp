@@ -248,6 +248,134 @@
   
   (format t "All search-forward mark clearing tests passed!~%~%"))
 
+(defun test-search-forward-minibuffer-integration ()
+  "Test that search-forward works correctly through minibuffer interface"
+  (format t "Running search-forward minibuffer integration tests...~%")
+  
+  ;; Test 1: Basic minibuffer search functionality  
+  (let ((editor (make-instance 'standard-editor))
+        (buffer (make-instance 'standard-buffer)))
+    ;; Setup buffer with test content
+    (setf (lines buffer) #("hello world test" "second line"))
+    (setf (buffers editor) (list buffer))
+    (buffer-set-point buffer 0 0)
+    
+    ;; Test that activating search creates proper minibuffer state
+    (activate-minibuffer editor "Search: " nil 'search-forward-command)
+    
+    ;; Verify minibuffer is active
+    (assert (minibuffer-active-p editor) () "Minibuffer should be active after activation")
+    (assert (string= (minibuffer-prompt editor) "Search: ") () 
+            "Minibuffer prompt should be 'Search: '")
+    (assert (eq (minibuffer-callback editor) 'search-forward-command) ()
+            "Minibuffer callback should be search-forward-command")
+    (format t "✓ Minibuffer activation works correctly~%")
+    
+    ;; Simulate typing "world" in minibuffer
+    (let ((minibuf (minibuffer editor)))
+      (insert-char minibuf #\w)
+      (insert-char minibuf #\o)
+      (insert-char minibuf #\r)
+      (insert-char minibuf #\l)
+      (insert-char minibuf #\d))
+    
+    ;; Verify minibuffer contains the typed text
+    (let ((contents (get-minibuffer-contents editor)))
+      (assert (string= contents "world") () 
+              "Minibuffer should contain 'world', got ~A" contents))
+    (format t "✓ Text input into minibuffer works~%")
+    
+    ;; Store initial position
+    (let ((initial-point (buffer-get-point buffer)))
+      (assert (equal initial-point '(0 0)) () "Initial position should be (0 0)")
+      
+      ;; Simulate pressing Enter (this should execute the callback)
+      (handle-minibuffer-input editor "Enter" nil nil nil)
+      
+      ;; Verify minibuffer is deactivated
+      (assert (not (minibuffer-active-p editor)) () 
+              "Minibuffer should be deactivated after Enter")
+      
+      ;; Verify cursor moved to the found position
+      (let ((final-point (buffer-get-point buffer)))
+        (assert (equal final-point '(0 6)) () 
+                "Cursor should move to position (0 6) where 'world' starts, got ~A" final-point))
+      (format t "✓ Enter executes search and moves cursor~%")))
+  
+  ;; Test 2: Escape cancellation
+  (let ((editor (make-instance 'standard-editor))
+        (buffer (make-instance 'standard-buffer)))
+    ;; Setup buffer
+    (setf (lines buffer) #("hello world test"))
+    (setf (buffers editor) (list buffer))
+    (buffer-set-point buffer 0 0)
+    
+    ;; Activate search and type some text
+    (activate-minibuffer editor "Search: " nil 'search-forward-command)
+    (let ((minibuf (minibuffer editor)))
+      (insert-char minibuf #\w)
+      (insert-char minibuf #\o)
+      (insert-char minibuf #\r))
+    
+    (let ((initial-point (buffer-get-point buffer)))
+      ;; Press Escape to cancel
+      (handle-minibuffer-input editor "Escape" nil nil nil)
+      
+      ;; Verify minibuffer is deactivated
+      (assert (not (minibuffer-active-p editor)) () 
+              "Minibuffer should be deactivated after Escape")
+      
+      ;; Verify cursor didn't move (search was cancelled)
+      (let ((final-point (buffer-get-point buffer)))
+        (assert (equal initial-point final-point) () 
+                "Cursor should not move when search is cancelled"))
+      (format t "✓ Escape cancels search without moving cursor~%")))
+  
+  (format t "All search-forward minibuffer integration tests passed!~%~%"))
+
+(defun test-search-forward-key-binding-regression ()
+  "Regression test for correct activate-minibuffer parameter usage"
+  (format t "Running search-forward key binding regression tests...~%")
+  
+  ;; Test that simulates the key binding bug where callback was passed as completion function
+  (let ((editor (make-instance 'standard-editor))
+        (buffer (make-instance 'standard-buffer)))
+    ;; Setup buffer
+    (setf (lines buffer) #("hello world test"))
+    (setf (buffers editor) (list buffer))
+    (buffer-set-point buffer 0 0)
+    
+    ;; This should mimic what happens when C-s is pressed with correct parameters
+    ;; The correct call: (activate-minibuffer editor "Search: " nil 'search-forward-command)
+    ;; The incorrect call was: (activate-minibuffer editor "Search: " 'search-forward-command)
+    (activate-minibuffer editor "Search: " nil 'search-forward-command)
+    
+    ;; Verify the callback is set correctly (not as completion function)
+    (assert (eq (minibuffer-callback editor) 'search-forward-command) ()
+            "Callback should be search-forward-command")
+    (assert (null (minibuffer-completion-function editor)) ()
+            "Completion function should be nil for search")
+    (format t "✓ activate-minibuffer called with correct parameters~%")
+    
+    ;; Type a search string
+    (let ((minibuf (minibuffer editor)))
+      (insert-char minibuf #\w)
+      (insert-char minibuf #\o)
+      (insert-char minibuf #\r)
+      (insert-char minibuf #\l)
+      (insert-char minibuf #\d))
+    
+    ;; Execute the callback by pressing Enter
+    (handle-minibuffer-input editor "Enter" nil nil nil)
+    
+    ;; Verify the search worked (cursor moved)
+    (let ((final-point (buffer-get-point buffer)))
+      (assert (equal final-point '(0 6)) ()
+              "Search should work with correct parameter order, cursor at ~A" final-point))
+    (format t "✓ Callback executed successfully with correct parameters~%"))
+  
+  (format t "All search-forward key binding regression tests passed!~%~%"))
+
 (defun run-all-search-forward-tests ()
   "Run all search-forward tests"
   (format t "~%======================================~%")
@@ -261,6 +389,8 @@
         (test-search-forward-multiline)
         (test-search-forward-undo)
         (test-search-forward-mark-clearing)
+        (test-search-forward-minibuffer-integration)
+        (test-search-forward-key-binding-regression)
         (format t "~%======================================~%")
         (format t "All search-forward tests passed successfully!~%")
         (format t "======================================~%"))
