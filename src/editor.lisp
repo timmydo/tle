@@ -185,6 +185,14 @@
           (format t "Found: ~A~%" search-string)
           (format t "Not found: ~A~%" search-string)))))
 
+(defun search-backward-command (search-string editor)
+  "Execute search-backward with the given search string."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (if (search-backward buffer (string-trim " " search-string))
+          (format t "Found: ~A~%" search-string)
+          (format t "Not found: ~A~%" search-string)))))
+
 ;; Register some basic commands
 (register-command "quit" (lambda (editor) (format t "Quit command executed~%")))
 (register-command "save-buffer" (lambda (editor) (format t "Save buffer command executed~%")))
