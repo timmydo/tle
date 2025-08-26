@@ -1056,6 +1056,9 @@
           ((and alt (string= key "g"))
            (prompt-goto-line editor)
            (format t "Alt-g: Prompt for goto line~%"))
+          ((and alt (string= key "%"))
+           (start-query-replace editor)
+           (format t "Alt-%: Query replace~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

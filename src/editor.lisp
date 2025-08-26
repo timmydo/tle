@@ -15,7 +15,8 @@
    (%minibuffer-completion-function :accessor minibuffer-completion-function :initform nil)
    (%minibuffer-callback :accessor minibuffer-callback :initform nil)
    (%minibuffer-live-callback :accessor minibuffer-live-callback :initform nil)
-   (%isearch-original-position :accessor isearch-original-position :initform nil)))
+   (%isearch-original-position :accessor isearch-original-position :initform nil)
+   (%query-replace-from-string :accessor query-replace-from-string :initform nil)))
 
 (defun make-standard-editor ()
   (let ((e (make-instance 'standard-editor)))
@@ -214,6 +215,31 @@
       (if (search-backward buffer (string-trim " " search-string))
           (format t "Found: ~A~%" search-string)
           (format t "Not found: ~A~%" search-string)))))
+
+(defun query-replace-from-command (from-string editor)
+  "First step of query-replace - get the 'from' string and prompt for 'to' string."
+  (let ((trimmed-from (string-trim " " from-string)))
+    ;; Store the from-string in a temporary slot and prompt for to-string
+    (setf (query-replace-from-string editor) trimmed-from)
+    (activate-minibuffer editor 
+                         (format nil "Replace '~A' with: " trimmed-from)
+                         nil 
+                         'query-replace-to-command)))
+
+(defun query-replace-to-command (to-string editor)
+  "Second step of query-replace - execute the replacement."
+  (let ((buffer (current-buffer editor))
+        (from-string (query-replace-from-string editor))
+        (trimmed-to (string-trim " " to-string)))
+    (when buffer
+      (let ((count (query-replace buffer from-string trimmed-to)))
+        (format t "Query replace completed: ~A replacements made~%" count)))
+    ;; Clear the stored from-string
+    (setf (query-replace-from-string editor) nil)))
+
+(defun start-query-replace (editor)
+  "Start query-replace by prompting for the search string."
+  (activate-minibuffer editor "Query replace: " nil 'query-replace-from-command))
 
 (defun isearch-forward-command (search-string editor)
   "Execute isearch-forward with the given search string."

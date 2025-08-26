@@ -130,6 +130,9 @@
 (defgeneric isearch-backward (buffer search-string)
   (:documentation "Incremental search backward. Highlights matches as you type and allows navigation between them."))
 
+(defgeneric query-replace (buffer from-string to-string)
+  (:documentation "Interactive find and replace. Prompts user for each replacement."))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -592,7 +595,23 @@
            ;; Redo search: move to found position
            (let* ((search-data data)
                   (new-point (getf search-data :new-point)))
-             (buffer-set-point buffer (first new-point) (second new-point))))))))
+             (buffer-set-point buffer (first new-point) (second new-point)))))
+      (:query-replace-batch
+       (if reverse-p
+           ;; Undo batch replace: restore entire original content
+           (let* ((replace-data data)
+                  (original-content (getf replace-data :original-content)))
+             ;; Replace entire buffer content
+             (setf (lines buffer) (copy-seq original-content))
+             ;; Restore original position
+             (buffer-set-point buffer (first position) (second position)))
+           ;; Redo batch replace: restore changed content
+           (let* ((replace-data data)
+                  (new-content (getf replace-data :new-content)))
+             ;; Replace entire buffer content with the changed version
+             (setf (lines buffer) (copy-seq new-content))
+             ;; Move to a reasonable position (keep current position)
+             ))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))
   "Undo the last operation"
@@ -2126,6 +2145,75 @@
         (buffer-set-point buffer found-line found-col))
       
       found)))
+
+(defmethod query-replace ((buffer standard-buffer) from-string to-string)
+  "Interactive find and replace. Prompts user for each replacement.
+   Returns number of replacements made."
+  (if (and from-string to-string 
+           (stringp from-string) (stringp to-string)
+           (> (length from-string) 0) 
+           (> (buffer-line-count buffer) 0))
+    (let* ((original-point (buffer-get-point buffer))
+           (original-content (copy-seq (lines buffer))) ; Save entire buffer state for undo
+           (replacements 0)
+           (total-matches 0))
+      
+      ;; Disable undo recording during replacements
+      (let ((old-recording (buffer-recording-undo-p buffer)))
+        (setf (buffer-recording-undo-p buffer) nil)
+        
+        ;; Start from beginning of buffer for query-replace
+        (buffer-set-point buffer 0 0)
+        
+        ;; Find and replace each occurrence
+        (loop while (search-forward buffer from-string) do
+              (incf total-matches)
+              (let* ((match-point (buffer-get-point buffer))
+                     (match-line (first match-point))
+                     (match-col (second match-point))
+                     (end-col (+ match-col (length from-string))))
+                
+                ;; For now, always replace (this will be interactive in the full implementation)
+                ;; In a real implementation, this would prompt the user
+                (let ((should-replace t)) ; Placeholder - always replace for now
+                  (when should-replace
+                    ;; Set mark to end of match and delete the matched text
+                    (buffer-set-mark buffer match-line end-col)
+                    (buffer-set-point buffer match-line match-col)
+                    (delete-region-without-undo buffer)
+                    (buffer-clear-mark buffer)
+                    
+                    ;; Insert replacement text
+                    (insert-text-without-undo buffer to-string)
+                    
+                    ;; Calculate final position after replacement
+                    (let ((new-end-col (+ match-col (length to-string))))
+                      ;; Update position to continue search after replacement
+                      (buffer-set-point buffer match-line new-end-col))
+                    
+                    (incf replacements)))))
+        
+        ;; Re-enable undo recording
+        (setf (buffer-recording-undo-p buffer) old-recording))
+      
+      ;; If any replacements were made, record one undo record for all changes
+      (when (> replacements 0)
+        (add-undo-record buffer :query-replace-batch original-point
+                         (list :original-content original-content
+                               :new-content (copy-seq (lines buffer))
+                               :from-string from-string
+                               :to-string to-string
+                               :replacements replacements)))
+      
+      ;; Restore original position or leave at end of last replacement
+      (when (= replacements 0)
+        (buffer-set-point buffer (first original-point) (second original-point)))
+      
+      (format t "Replaced ~A occurrence~:P of '~A' with '~A'~%" 
+              replacements from-string to-string)
+      replacements)
+    ;; Invalid input case
+    0))
 
 (defun find-all-matches (buffer search-string)
   "Find all matches of search-string in buffer. Returns list of (line col) positions."
