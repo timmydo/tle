@@ -2147,16 +2147,15 @@
       found)))
 
 (defmethod query-replace ((buffer standard-buffer) from-string to-string)
-  "Interactive find and replace. Prompts user for each replacement.
-   Returns number of replacements made."
+  "Non-interactive batch replace for backward compatibility.
+   For interactive replacement, use start-interactive-query-replace instead."
   (if (and from-string to-string 
            (stringp from-string) (stringp to-string)
            (> (length from-string) 0) 
            (> (buffer-line-count buffer) 0))
     (let* ((original-point (buffer-get-point buffer))
-           (original-content (copy-seq (lines buffer))) ; Save entire buffer state for undo
-           (replacements 0)
-           (total-matches 0))
+           (original-content (copy-seq (lines buffer)))
+           (replacements 0))
       
       ;; Disable undo recording during replacements
       (let ((old-recording (buffer-recording-undo-p buffer)))
@@ -2167,31 +2166,27 @@
         
         ;; Find and replace each occurrence
         (loop while (search-forward buffer from-string) do
-              (incf total-matches)
               (let* ((match-point (buffer-get-point buffer))
                      (match-line (first match-point))
                      (match-col (second match-point))
                      (end-col (+ match-col (length from-string))))
                 
-                ;; For now, always replace (this will be interactive in the full implementation)
-                ;; In a real implementation, this would prompt the user
-                (let ((should-replace t)) ; Placeholder - always replace for now
-                  (when should-replace
-                    ;; Set mark to end of match and delete the matched text
-                    (buffer-set-mark buffer match-line end-col)
-                    (buffer-set-point buffer match-line match-col)
-                    (delete-region-without-undo buffer)
-                    (buffer-clear-mark buffer)
-                    
-                    ;; Insert replacement text
-                    (insert-text-without-undo buffer to-string)
-                    
-                    ;; Calculate final position after replacement
-                    (let ((new-end-col (+ match-col (length to-string))))
-                      ;; Update position to continue search after replacement
-                      (buffer-set-point buffer match-line new-end-col))
-                    
-                    (incf replacements)))))
+                ;; Always replace in batch mode
+                ;; Set mark to end of match and delete the matched text
+                (buffer-set-mark buffer match-line end-col)
+                (buffer-set-point buffer match-line match-col)
+                (delete-region-without-undo buffer)
+                (buffer-clear-mark buffer)
+                
+                ;; Insert replacement text
+                (insert-text-without-undo buffer to-string)
+                
+                ;; Calculate final position after replacement
+                (let ((new-end-col (+ match-col (length to-string))))
+                  ;; Update position to continue search after replacement
+                  (buffer-set-point buffer match-line new-end-col))
+                
+                (incf replacements)))
         
         ;; Re-enable undo recording
         (setf (buffer-recording-undo-p buffer) old-recording))
@@ -2229,6 +2224,41 @@
                     (push (list line-num match-pos) matches)
                     (setf start-pos (1+ match-pos)))
                   (return))))))
+      (reverse matches))))
+
+(defun find-matches-from-point (buffer search-string)
+  "Find all matches of search-string in buffer starting from current cursor position. 
+   Returns list of (line col) positions."
+  (when (and search-string (> (length search-string) 0) (> (buffer-line-count buffer) 0))
+    (let* ((current-point (buffer-get-point buffer))
+           (current-line (first current-point))
+           (current-col (second current-point))
+           (matches '()))
+      
+      ;; Search from current position on current line
+      (when (< current-line (buffer-line-count buffer))
+        (let ((line-text (buffer-line buffer current-line))
+              (start-pos current-col))
+          (loop
+            (let ((match-pos (search search-string line-text :start2 start-pos)))
+              (if match-pos
+                  (progn
+                    (push (list current-line match-pos) matches)
+                    (setf start-pos (1+ match-pos)))
+                  (return))))))
+      
+      ;; Search remaining lines from beginning
+      (loop for line-num from (1+ current-line) below (buffer-line-count buffer) do
+        (let ((line-text (buffer-line buffer line-num))
+              (start-pos 0))
+          (loop
+            (let ((match-pos (search search-string line-text :start2 start-pos)))
+              (if match-pos
+                  (progn
+                    (push (list line-num match-pos) matches)
+                    (setf start-pos (1+ match-pos)))
+                  (return))))))
+      
       (reverse matches))))
 
 (defun set-isearch-state (buffer search-term active)

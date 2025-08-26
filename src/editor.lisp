@@ -16,7 +16,14 @@
    (%minibuffer-callback :accessor minibuffer-callback :initform nil)
    (%minibuffer-live-callback :accessor minibuffer-live-callback :initform nil)
    (%isearch-original-position :accessor isearch-original-position :initform nil)
-   (%query-replace-from-string :accessor query-replace-from-string :initform nil)))
+   (%query-replace-from-string :accessor query-replace-from-string :initform nil)
+   (%query-replace-to-string :accessor query-replace-to-string :initform nil)
+   (%query-replace-active :accessor query-replace-active-p :initform nil)
+   (%query-replace-matches :accessor query-replace-matches :initform nil)
+   (%query-replace-current-match :accessor query-replace-current-match :initform 0)
+   (%query-replace-replacements :accessor query-replace-replacements :initform nil)
+   (%query-replace-original-position :accessor query-replace-original-position :initform nil)
+   (%in-recursive-edit :accessor in-recursive-edit-p :initform nil)))
 
 (defun make-standard-editor ()
   (let ((e (make-instance 'standard-editor)))
@@ -140,6 +147,24 @@
   "Handle input when minibuffer is active."
   (let ((minibuf (minibuffer editor)))
     (cond
+      ;; Special handling for query-replace single-key commands
+      ((and (query-replace-active-p editor)
+            (eq (minibuffer-callback editor) 'query-replace-action-callback)
+            (> (length key) 0)
+            (not ctrl) (not alt) (not shift)
+            (member key '("y" "n" "q" "!" "." "," "^" "u" "U" "e" "E" "r" "w" "l" "?" " ") :test #'string=))
+       (deactivate-minibuffer editor)
+       (query-replace-action-callback key editor)
+       t)
+      
+      ;; Special handling for Delete key in query-replace (same as 'n')
+      ((and (query-replace-active-p editor)
+            (eq (minibuffer-callback editor) 'query-replace-action-callback)
+            (string= key "Delete"))
+       (deactivate-minibuffer editor)
+       (query-replace-action-callback "n" editor)
+       t)
+      
       ;; Enter key - execute callback or command
       ((string= key "Enter")
        (let ((contents (get-minibuffer-contents editor))
@@ -150,8 +175,24 @@
              (execute-named-command contents editor)))
        t)
       
-      ;; Escape key - cancel minibuffer
-      ((string= key "Escape")
+      ;; C-M-c - exit recursive edit
+      ((and ctrl alt (string= key "c"))
+       (when (in-recursive-edit-p editor)
+         (exit-recursive-edit "" editor))
+       t)
+      
+      ;; Escape key or C-g - cancel minibuffer
+      ((or (string= key "Escape")
+           (and ctrl (string= key "g")))
+       ;; If this is query-replace, restore original position and clean up
+       (when (query-replace-active-p editor)
+         (let ((original-pos (query-replace-original-position editor))
+               (buffer (current-buffer editor)))
+           (when (and original-pos buffer)
+             (buffer-set-point buffer (first original-pos) (second original-pos)))
+           (clear-query-replace-state editor)
+           (format t "Query replace cancelled~%")))
+       
        ;; If this is an isearch, restore original position
        (let ((original-pos (isearch-original-position editor))
              (buffer (current-buffer editor)))
@@ -160,8 +201,10 @@
            (buffer-set-point buffer (first original-pos) (second original-pos))
            (setf (isearch-original-position editor) nil)
            (format t "Isearch cancelled, position restored~%")))
+       
        (deactivate-minibuffer editor)
-       (format t "Minibuffer cancelled~%")
+       (unless (query-replace-active-p editor)
+         (format t "Minibuffer cancelled~%"))
        t)
       
       ;; Backspace - delete character in minibuffer
@@ -227,19 +270,316 @@
                          'query-replace-to-command)))
 
 (defun query-replace-to-command (to-string editor)
-  "Second step of query-replace - execute the replacement."
+  "Second step of query-replace - start interactive replacement."
   (let ((buffer (current-buffer editor))
         (from-string (query-replace-from-string editor))
         (trimmed-to (string-trim " " to-string)))
     (when buffer
-      (let ((count (query-replace buffer from-string trimmed-to)))
-        (format t "Query replace completed: ~A replacements made~%" count)))
+      (start-interactive-query-replace editor from-string trimmed-to))
     ;; Clear the stored from-string
     (setf (query-replace-from-string editor) nil)))
 
 (defun start-query-replace (editor)
   "Start query-replace by prompting for the search string."
   (activate-minibuffer editor "Query replace: " nil 'query-replace-from-command))
+
+(defun start-interactive-query-replace (editor from-string to-string)
+  "Start interactive query-replace session."
+  (let ((buffer (current-buffer editor)))
+    (when (and buffer from-string to-string 
+               (> (length from-string) 0))
+      ;; Store original position for cancellation
+      (setf (query-replace-original-position editor) (buffer-get-point buffer))
+      
+      ;; Find all matches from cursor position
+      (let ((matches (find-matches-from-point buffer from-string)))
+        (if matches
+            (progn
+              ;; Initialize query-replace state
+              (setf (query-replace-active-p editor) t)
+              (setf (query-replace-from-string editor) from-string)
+              (setf (query-replace-to-string editor) to-string)
+              (setf (query-replace-matches editor) matches)
+              (setf (query-replace-current-match editor) 0)
+              (setf (query-replace-replacements editor) '())
+              
+              ;; Move to first match and start interactive session
+              (let ((first-match (first matches)))
+                (buffer-set-point buffer (first first-match) (second first-match)))
+              
+              ;; Activate minibuffer for interactive replacement
+              (query-replace-prompt-for-action editor))
+            (progn
+              (format t "No matches found for '~A'~%" from-string)
+              (clear-query-replace-state editor)))))))
+
+(defun query-replace-prompt-for-action (editor)
+  "Prompt user for action on current match."
+  (let* ((buffer (current-buffer editor))
+         (from-string (or (query-replace-from-string editor) ""))
+         (to-string (query-replace-to-string editor))
+         (current-match-idx (query-replace-current-match editor))
+         (matches (query-replace-matches editor))
+         (current-match (nth current-match-idx matches)))
+    
+    (when current-match
+      ;; Highlight current match by positioning cursor
+      (buffer-set-point buffer (first current-match) (second current-match))
+      
+      ;; Show replacement prompt
+      (let ((prompt (format nil "Replace '~A' with '~A'? (y/n/!/q/^/? for help): " 
+                            from-string to-string)))
+        (activate-minibuffer editor prompt nil 'query-replace-action-callback)))))
+
+(defun query-replace-action-callback (action editor)
+  "Handle user's action in interactive query-replace."
+  (let ((action-char (if (> (length action) 0) (char action 0) #\q)))
+    (case action-char
+      ((#\y #\Space)  ; yes, replace this match
+       (perform-current-replacement editor)
+       (advance-to-next-match editor))
+      ((#\n #\Delete) ; no, skip this match  
+       (advance-to-next-match editor))
+      (#\!            ; replace all remaining matches
+       (replace-all-remaining-matches editor))
+      ((#\q #\Return) ; quit
+       (finish-query-replace editor))
+      (#\.            ; replace and quit
+       (perform-current-replacement editor)
+       (finish-query-replace editor))
+      (#\,            ; replace but don't advance
+       (perform-current-replacement editor)
+       (query-replace-prompt-for-action editor))
+      (#\^            ; go back to previous match
+       (go-to-previous-match editor))
+      (#\u            ; undo last replacement
+       (undo-last-replacement editor))
+      (#\U            ; undo all replacements
+       (undo-all-replacements editor))
+      (#\e            ; edit replacement string
+       (edit-replacement-string editor))
+      (#\E            ; edit replacement string with exact case
+       (edit-replacement-string editor t))
+      (#\r            ; recursive edit (simplified)
+       (start-recursive-edit editor))
+      (#\w            ; delete match and start recursive edit  
+       (perform-current-replacement editor)
+       (start-recursive-edit editor))
+      (#\l            ; clear screen and redisplay
+       (format t "Screen cleared~%")
+       (query-replace-prompt-for-action editor))
+      (#\?            ; show help
+       (show-query-replace-help editor))
+      (otherwise      ; invalid input
+       (format t "Invalid action '~A'. Type ? for help~%" action)
+       (query-replace-prompt-for-action editor)))))
+
+(defun clear-query-replace-state (editor)
+  "Clear query-replace state."
+  (setf (query-replace-active-p editor) nil)
+  (setf (query-replace-to-string editor) nil)
+  (setf (query-replace-matches editor) nil)
+  (setf (query-replace-current-match editor) 0)
+  (setf (query-replace-replacements editor) nil)
+  (setf (query-replace-original-position editor) nil))
+
+(defun perform-current-replacement (editor)
+  "Replace the current match."
+  (let* ((buffer (current-buffer editor))
+         (from-string (query-replace-from-string editor))
+         (to-string (query-replace-to-string editor))
+         (current-match-idx (query-replace-current-match editor))
+         (matches (query-replace-matches editor))
+         (current-match (nth current-match-idx matches)))
+    
+    (when current-match
+      (let ((line (first current-match))
+            (col (second current-match))
+            (from-len (length from-string)))
+        
+        ;; Record this replacement for undo
+        (push (list :line line :col col :from-text from-string :to-text to-string
+                    :original-text (buffer-line buffer line))
+              (query-replace-replacements editor))
+        
+        ;; Perform replacement
+        (buffer-set-point buffer line col)
+        (buffer-set-mark buffer line (+ col from-len))
+        (delete-region buffer)
+        (buffer-clear-mark buffer)
+        (insert-text buffer to-string)
+        
+        ;; Update matches list to adjust positions after replacement
+        (update-matches-after-replacement editor line col from-len (length to-string))
+        
+        (format t "Replaced '~A' with '~A' at line ~A, column ~A~%" 
+                from-string to-string (1+ line) (1+ col))))))
+
+(defun advance-to-next-match (editor)
+  "Advance to the next match in query-replace session."
+  (let* ((current-idx (query-replace-current-match editor))
+         (matches (query-replace-matches editor))
+         (next-idx (1+ current-idx)))
+    
+    (if (< next-idx (length matches))
+        (progn
+          (setf (query-replace-current-match editor) next-idx)
+          (query-replace-prompt-for-action editor))
+        (finish-query-replace editor))))
+
+(defun replace-all-remaining-matches (editor)
+  "Replace all remaining matches without prompting."
+  (let* ((current-idx (query-replace-current-match editor))
+         (matches (query-replace-matches editor))
+         (remaining-count (- (length matches) current-idx)))
+    
+    (loop for i from current-idx below (length matches) do
+      (perform-current-replacement editor))
+    
+    (format t "Replaced ~A remaining occurrence~:P~%" remaining-count)
+    (finish-query-replace editor)))
+
+(defun finish-query-replace (editor)
+  "Finish query-replace session and show summary."
+  (let ((replacement-count (length (query-replace-replacements editor))))
+    (format t "Query replace finished. Made ~A replacement~:P~%" replacement-count)
+    (clear-query-replace-state editor)))
+
+(defun go-to-previous-match (editor)
+  "Go back to previous match in query-replace session."
+  (let* ((current-idx (query-replace-current-match editor))
+         (prev-idx (1- current-idx)))
+    
+    (if (>= prev-idx 0)
+        (progn
+          (setf (query-replace-current-match editor) prev-idx)
+          (query-replace-prompt-for-action editor))
+        (progn
+          (format t "No previous match~%")
+          (query-replace-prompt-for-action editor)))))
+
+(defun undo-last-replacement (editor)
+  "Undo the last replacement made."
+  (let ((replacements (query-replace-replacements editor)))
+    (if replacements
+        (let* ((last-replacement (first replacements))
+               (line (getf last-replacement :line))
+               (col (getf last-replacement :col))
+               (original-text (getf last-replacement :original-text))
+               (buffer (current-buffer editor)))
+          
+          ;; Restore original line
+          (setf (nth line (lines buffer)) original-text)
+          
+          ;; Remove from replacements list
+          (setf (query-replace-replacements editor) (rest replacements))
+          
+          (format t "Undid replacement at line ~A~%" (1+ line))
+          (query-replace-prompt-for-action editor))
+        (progn
+          (format t "No replacements to undo~%")
+          (query-replace-prompt-for-action editor)))))
+
+(defun undo-all-replacements (editor)
+  "Undo all replacements made in this session."
+  (let ((replacement-count (length (query-replace-replacements editor))))
+    (loop while (query-replace-replacements editor) do
+      (undo-last-replacement-without-prompt editor))
+    
+    (format t "Undid ~A replacement~:P~%" replacement-count)
+    (query-replace-prompt-for-action editor)))
+
+(defun undo-last-replacement-without-prompt (editor)
+  "Undo last replacement without re-prompting."
+  (let ((replacements (query-replace-replacements editor)))
+    (when replacements
+      (let* ((last-replacement (first replacements))
+             (line (getf last-replacement :line))
+             (original-text (getf last-replacement :original-text))
+             (buffer (current-buffer editor)))
+        
+        ;; Restore original line
+        (setf (nth line (lines buffer)) original-text)
+        
+        ;; Remove from replacements list
+        (setf (query-replace-replacements editor) (rest replacements))))))
+
+(defun edit-replacement-string (editor &optional exact-case)
+  "Allow user to edit the replacement string."
+  (declare (ignore exact-case)) ; TODO: implement exact case handling
+  (let ((current-to (query-replace-to-string editor)))
+    (activate-minibuffer editor 
+                         (format nil "Edit replacement string (was '~A'): " current-to)
+                         nil
+                         'edit-replacement-callback)))
+
+(defun edit-replacement-callback (new-string editor)
+  "Handle edited replacement string."
+  (setf (query-replace-to-string editor) (string-trim " " new-string))
+  (format t "Replacement string updated to: '~A'~%" (query-replace-to-string editor))
+  (query-replace-prompt-for-action editor))
+
+(defun update-matches-after-replacement (editor line col from-len to-len)
+  "Update match positions after a replacement changes text length."
+  (let ((matches (query-replace-matches editor))
+        (length-diff (- to-len from-len)))
+    
+    (when (/= length-diff 0)
+      ;; Update positions of matches on same line that come after the replacement
+      (loop for match in matches
+            for i from 0
+            when (and (= (first match) line)
+                      (> (second match) col))
+            do (setf (second match) (+ (second match) length-diff)))
+      
+      ;; Store updated matches
+      (setf (query-replace-matches editor) matches))))
+
+(defun show-query-replace-help (editor)
+  "Show help for query-replace interactive commands."
+  (format t "~%Query Replace Help:~%")
+  (format t "  y or SPC      - replace this match and move to next~%")
+  (format t "  n or Delete   - skip this match and move to next~%")
+  (format t "  q or RET      - quit query-replace~%")
+  (format t "  !             - replace all remaining matches without asking~%")
+  (format t "  .             - replace this match and quit~%")
+  (format t "  ,             - replace this match but don't move to next~%")
+  (format t "  ^             - move back to previous match~%")
+  (format t "  u             - undo last replacement~%")
+  (format t "  U             - undo all replacements~%")
+  (format t "  e             - edit replacement string~%")
+  (format t "  E             - edit replacement string with exact case~%")
+  (format t "  r             - enter recursive edit~%")
+  (format t "  w             - replace match and enter recursive edit~%")
+  (format t "  l             - clear screen and redisplay~%")
+  (format t "  ?             - show this help~%")
+  (format t "~%Press any key to continue...~%")
+  
+  ;; Wait for user to press a key, then continue
+  (activate-minibuffer editor "Press any key to continue: " nil 'query-replace-help-continue))
+
+(defun query-replace-help-continue (input editor)
+  "Continue query-replace after showing help."
+  (declare (ignore input))
+  (query-replace-prompt-for-action editor))
+
+(defun start-recursive-edit (editor)
+  "Start a recursive edit during query-replace."
+  (format t "~%Entering recursive edit. Press C-M-c when done to continue query-replace.~%")
+  (format t "You can edit the buffer normally. The query-replace session will resume when you exit.~%")
+  
+  ;; Set up recursive edit state
+  (setf (in-recursive-edit-p editor) t)
+  
+  ;; Prompt for exit
+  (activate-minibuffer editor "Recursive edit (C-M-c to exit): " nil 'exit-recursive-edit))
+
+(defun exit-recursive-edit (input editor)
+  "Exit recursive edit and return to query-replace."
+  (declare (ignore input))
+  (setf (in-recursive-edit-p editor) nil)
+  (format t "Exiting recursive edit, resuming query-replace~%")
+  (query-replace-prompt-for-action editor))
 
 (defun isearch-forward-command (search-string editor)
   "Execute isearch-forward with the given search string."
