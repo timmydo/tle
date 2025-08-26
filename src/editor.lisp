@@ -49,6 +49,7 @@
 
 (defun activate-minibuffer (editor prompt &optional completion-function callback-function live-callback-function)
   "Activate the minibuffer with the given prompt, optional completion function, callback function, and live callback function."
+  (format t "DEBUG: activate-minibuffer called with prompt '~A', callback ~A~%" prompt callback-function)
   (setf (minibuffer editor) (make-empty-buffer "*minibuffer*"))
   (setf (minibuffer-active-p editor) t)
   (setf (minibuffer-prompt editor) prompt)
@@ -169,10 +170,16 @@
       ((string= key "Enter")
        (let ((contents (get-minibuffer-contents editor))
              (callback (minibuffer-callback editor)))
+         (format t "DEBUG: Enter pressed in minibuffer. Contents: '~A', Callback: ~A~%" 
+                 contents callback)
          (deactivate-minibuffer editor)
          (if callback
-             (funcall callback contents editor)
-             (execute-named-command contents editor)))
+             (progn
+               (format t "DEBUG: Calling callback ~A with contents '~A'~%" callback contents)
+               (funcall callback contents editor))
+             (progn
+               (format t "DEBUG: Executing named command '~A'~%" contents)
+               (execute-named-command contents editor))))
        t)
       
       ;; C-M-c - exit recursive edit
@@ -262,6 +269,7 @@
 (defun query-replace-from-command (from-string editor)
   "First step of query-replace - get the 'from' string and prompt for 'to' string."
   (let ((trimmed-from (string-trim " " from-string)))
+    (format t "DEBUG: query-replace-from-command called with '~A', trimmed to '~A'~%" from-string trimmed-from)
     ;; Store the from-string in a temporary slot and prompt for to-string
     (setf (query-replace-from-string editor) trimmed-from)
     (activate-minibuffer editor 
@@ -274,7 +282,10 @@
   (let ((buffer (current-buffer editor))
         (from-string (query-replace-from-string editor))
         (trimmed-to (string-trim " " to-string)))
+    (format t "DEBUG: query-replace-to-command called with to-string '~A', trimmed to '~A'~%" to-string trimmed-to)
+    (format t "DEBUG: from-string is '~A', buffer is ~A~%" from-string buffer)
     (when buffer
+      (format t "DEBUG: Starting interactive query replace from '~A' to '~A'~%" from-string trimmed-to)
       (start-interactive-query-replace editor from-string trimmed-to))
     ;; Clear the stored from-string
     (setf (query-replace-from-string editor) nil)))
@@ -291,27 +302,34 @@
       ;; Store original position for cancellation
       (setf (query-replace-original-position editor) (buffer-get-point buffer))
       
-      ;; Find all matches from cursor position
-      (let ((matches (find-matches-from-point buffer from-string)))
-        (if matches
-            (progn
-              ;; Initialize query-replace state
-              (setf (query-replace-active-p editor) t)
-              (setf (query-replace-from-string editor) from-string)
-              (setf (query-replace-to-string editor) to-string)
-              (setf (query-replace-matches editor) matches)
-              (setf (query-replace-current-match editor) 0)
-              (setf (query-replace-replacements editor) '())
-              
-              ;; Move to first match and start interactive session
-              (let ((first-match (first matches)))
-                (buffer-set-point buffer (first first-match) (second first-match)))
-              
-              ;; Activate minibuffer for interactive replacement
-              (query-replace-prompt-for-action editor))
-            (progn
-              (format t "No matches found for '~A'~%" from-string)
-              (clear-query-replace-state editor)))))))
+      ;; Check if region is active for feedback
+      (let ((mark (buffer-get-mark buffer))
+            (region-message (if (buffer-get-mark buffer) " in region" "")))
+        ;; Find all matches from cursor position (respecting region if active)
+        (let ((matches (find-matches-from-point buffer from-string)))
+          (if matches
+              (progn
+                ;; Initialize query-replace state
+                (setf (query-replace-active-p editor) t)
+                (setf (query-replace-from-string editor) from-string)
+                (setf (query-replace-to-string editor) to-string)
+                (setf (query-replace-matches editor) matches)
+                (setf (query-replace-current-match editor) 0)
+                (setf (query-replace-replacements editor) '())
+                
+                ;; Move to first match and start interactive session
+                (let ((first-match (first matches)))
+                  (buffer-set-point buffer (first first-match) (second first-match)))
+                
+                ;; Show info about matches found
+                (format t "Found ~A occurrence~:P of '~A'~A~%" 
+                        (length matches) from-string region-message)
+                
+                ;; Activate minibuffer for interactive replacement
+                (query-replace-prompt-for-action editor))
+              (progn
+                (format t "No matches found for '~A'~A~%" from-string region-message)
+                (clear-query-replace-state editor))))))))
 
 (defun query-replace-prompt-for-action (editor)
   "Prompt user for action on current match."
@@ -335,14 +353,14 @@
   "Handle user's action in interactive query-replace."
   (let ((action-char (if (> (length action) 0) (char action 0) #\q)))
     (case action-char
-      ((#\y #\Space)  ; yes, replace this match
+      ((#\y #\Space #\Return)  ; yes, replace this match (Enter acts like 'y')
        (perform-current-replacement editor)
        (advance-to-next-match editor))
       ((#\n #\Delete) ; no, skip this match  
        (advance-to-next-match editor))
       (#\!            ; replace all remaining matches
        (replace-all-remaining-matches editor))
-      ((#\q #\Return) ; quit
+      (#\q            ; quit
        (finish-query-replace editor))
       (#\.            ; replace and quit
        (perform-current-replacement editor)
@@ -407,7 +425,7 @@
         (buffer-set-mark buffer line (+ col from-len))
         (delete-region buffer)
         (buffer-clear-mark buffer)
-        (insert-text buffer to-string)
+        (buffer-insert buffer to-string)
         
         ;; Update matches list to adjust positions after replacement
         (update-matches-after-replacement editor line col from-len (length to-string))
@@ -538,9 +556,9 @@
 (defun show-query-replace-help (editor)
   "Show help for query-replace interactive commands."
   (format t "~%Query Replace Help:~%")
-  (format t "  y or SPC      - replace this match and move to next~%")
+  (format t "  y, SPC or RET - replace this match and move to next~%")
   (format t "  n or Delete   - skip this match and move to next~%")
-  (format t "  q or RET      - quit query-replace~%")
+  (format t "  q             - quit query-replace~%")
   (format t "  !             - replace all remaining matches without asking~%")
   (format t "  .             - replace this match and quit~%")
   (format t "  ,             - replace this match but don't move to next~%")

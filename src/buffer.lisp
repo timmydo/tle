@@ -196,7 +196,9 @@
   (aref (lines buffer) line-number))
 
 (defmethod buffer-insert ((buffer standard-buffer) content)
-  )
+  "Insert content (string) at the current point position"
+  (when (and content (> (buffer-line-count buffer) 0))
+    (insert-text-without-undo buffer content)))
 
 (defmethod buffer-delete ((buffer standard-buffer) amount)
   )
@@ -2227,33 +2229,57 @@
       (reverse matches))))
 
 (defun find-matches-from-point (buffer search-string)
-  "Find all matches of search-string in buffer starting from current cursor position. 
-   Returns list of (line col) positions."
+  "Find all matches of search-string in buffer starting from current cursor position.
+   If mark is active, limit search to the region. Returns list of (line col) positions."
   (when (and search-string (> (length search-string) 0) (> (buffer-line-count buffer) 0))
     (let* ((current-point (buffer-get-point buffer))
            (current-line (first current-point))
            (current-col (second current-point))
-           (matches '()))
+           (mark (buffer-get-mark buffer))
+           (matches '())
+           ;; Determine search boundaries
+           (search-start-line current-line)
+           (search-start-col current-col)
+           (search-end-line (1- (buffer-line-count buffer)))
+           (search-end-col nil)) ; nil means end of line
       
-      ;; Search from current position on current line
-      (when (< current-line (buffer-line-count buffer))
-        (let ((line-text (buffer-line buffer current-line))
-              (start-pos current-col))
+      ;; If mark is active, limit search to region
+      (when mark
+        (let* ((mark-line (first mark))
+               (mark-col (second mark))
+               (selection-range (get-selection-range current-line current-col mark-line mark-col)))
+          (setf search-start-line (first selection-range))
+          (setf search-start-col (second selection-range))
+          (setf search-end-line (third selection-range))
+          (setf search-end-col (fourth selection-range))))
+      
+      ;; Search from start position on start line
+      (when (<= search-start-line (buffer-line-count buffer))
+        (let* ((line-text (buffer-line buffer search-start-line))
+               (start-pos search-start-col)
+               (end-pos (if (and search-end-col (= search-start-line search-end-line))
+                           search-end-col
+                           (length line-text))))
           (loop
             (let ((match-pos (search search-string line-text :start2 start-pos)))
-              (if match-pos
+              (if (and match-pos (< match-pos end-pos))
                   (progn
-                    (push (list current-line match-pos) matches)
+                    (push (list search-start-line match-pos) matches)
                     (setf start-pos (1+ match-pos)))
                   (return))))))
       
-      ;; Search remaining lines from beginning
-      (loop for line-num from (1+ current-line) below (buffer-line-count buffer) do
-        (let ((line-text (buffer-line buffer line-num))
-              (start-pos 0))
+      ;; Search remaining lines within region
+      (loop for line-num from (1+ search-start-line) to search-end-line do
+        (format t "DEBUG: Processing remaining line ~A~%" line-num)
+        (let* ((line-text (buffer-line buffer line-num))
+               (start-pos 0)
+               (end-pos (if (and search-end-col (= line-num search-end-line))
+                           search-end-col
+                           (length line-text))))
+          (format t "DEBUG: Got remaining line-text: '~A'~%" line-text)
           (loop
             (let ((match-pos (search search-string line-text :start2 start-pos)))
-              (if match-pos
+              (if (and match-pos (< match-pos end-pos))
                   (progn
                     (push (list line-num match-pos) matches)
                     (setf start-pos (1+ match-pos)))
