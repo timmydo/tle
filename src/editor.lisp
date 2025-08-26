@@ -266,6 +266,47 @@
                            ;; Live callback as user types
                            #'live-isearch-forward))))
 
+(defun live-isearch-backward (search-string editor)
+  "Live incremental search backward - called as user types in minibuffer."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (let ((trimmed-string (string-trim " " search-string)))
+        (if (and trimmed-string (> (length trimmed-string) 0))
+            ;; Search for the string
+            (let ((original-pos (isearch-original-position editor)))
+              ;; Set isearch state for highlighting
+              (set-isearch-state buffer trimmed-string t)
+              ;; Restore to original position first
+              (when original-pos
+                (buffer-set-point buffer (first original-pos) (second original-pos)))
+              ;; Perform search from original position
+              (if (isearch-backward buffer trimmed-string)
+                  (format t "Isearch backward: Found '~A'~%" trimmed-string)
+                  (format t "Isearch backward: '~A' not found~%" trimmed-string)))
+            ;; Empty search string - restore original position and clear highlights
+            (let ((original-pos (isearch-original-position editor)))
+              (clear-isearch-state buffer)
+              (when original-pos
+                (buffer-set-point buffer (first original-pos) (second original-pos)))))))))
+
+(defun start-isearch-backward (editor)
+  "Start incremental search backward with live updates."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      ;; Store original cursor position
+      (setf (isearch-original-position editor) (copy-list (buffer-get-point buffer)))
+      ;; Activate minibuffer with live callback
+      (activate-minibuffer editor "I-search backward: " nil 
+                           ;; Final callback when Enter is pressed
+                           (lambda (search-string editor)
+                             (let ((buffer (current-buffer editor)))
+                               (when buffer
+                                 (clear-isearch-state buffer)))
+                             (setf (isearch-original-position editor) nil)
+                             (format t "Isearch backward completed: ~A~%" search-string))
+                           ;; Live callback as user types
+                           #'live-isearch-backward))))
+
 ;; Register some basic commands
 (register-command "quit" (lambda (editor) (format t "Quit command executed~%")))
 (register-command "save-buffer" (lambda (editor) (format t "Save buffer command executed~%")))

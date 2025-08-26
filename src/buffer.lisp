@@ -127,6 +127,9 @@
 (defgeneric isearch-forward (buffer search-string)
   (:documentation "Incremental search forward. Highlights matches as you type and allows navigation between them."))
 
+(defgeneric isearch-backward (buffer search-string)
+  (:documentation "Incremental search backward. Highlights matches as you type and allows navigation between them."))
+
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -575,6 +578,14 @@
                   (new-point (getf search-data :new-point)))
              (buffer-set-point buffer (first new-point) (second new-point)))))
       (:isearch-forward
+       (if reverse-p
+           ;; Undo search: restore original point position
+           (buffer-set-point buffer (first position) (second position))
+           ;; Redo search: move to found position
+           (let* ((search-data data)
+                  (new-point (getf search-data :new-point)))
+             (buffer-set-point buffer (first new-point) (second new-point)))))
+      (:isearch-backward
        (if reverse-p
            ;; Undo search: restore original point position
            (buffer-set-point buffer (first position) (second position))
@@ -2070,6 +2081,45 @@
         (buffer-clear-mark buffer)
         ;; Record undo information for the point movement
         (add-undo-record buffer :isearch-forward (copy-list point) 
+                         (list :search-string search-string
+                               :new-point (list found-line found-col)))
+        ;; Move to found position
+        (buffer-set-point buffer found-line found-col))
+      
+      found)))
+
+(defmethod isearch-backward ((buffer standard-buffer) search-string)
+  "Incremental search backward. Highlights matches as you type and allows navigation between them.
+   Return t if found, nil otherwise. Move point to beginning of found string if successful."
+  (when (and search-string (> (length search-string) 0) (> (buffer-line-count buffer) 0))
+    (let* ((point (buffer-get-point buffer))
+           (start-line (first point))
+           (start-col (second point))
+           (found nil)
+           (found-line nil)
+           (found-col nil))
+      
+      ;; Search starting from current position going backward
+      (loop for line-num from start-line downto 0
+            until found do
+              (let* ((line-text (buffer-line buffer line-num))
+                     ;; For current line, search from beginning to current column
+                     ;; For previous lines, search entire line  
+                     (end-pos (if (= line-num start-line) start-col (length line-text))))
+                ;; Find the rightmost occurrence in this line that's before the current position
+                (when (> end-pos 0)
+                  (let ((search-pos (search search-string line-text :from-end t :end2 end-pos)))
+                    (when search-pos
+                      (setf found t
+                            found-line line-num
+                            found-col search-pos))))))
+      
+      ;; If found, move point to the beginning of found string
+      (when found
+        ;; Clear mark before moving
+        (buffer-clear-mark buffer)
+        ;; Record undo information for the point movement
+        (add-undo-record buffer :isearch-backward (copy-list point) 
                          (list :search-string search-string
                                :new-point (list found-line found-col)))
         ;; Move to found position
