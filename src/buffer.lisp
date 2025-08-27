@@ -37,6 +37,9 @@
 (defgeneric buffer-clear-mark (buffer)
   (:documentation "Clear the mark"))
 
+(defgeneric keyboard-quit (buffer)
+  (:documentation "Cancel current operation and clear mark if set"))
+
 (defgeneric forward-char (buffer)
   (:documentation "Move point forward one character"))
 
@@ -667,6 +670,12 @@
 
 (defmethod buffer-clear-mark ((buffer standard-buffer))
   (setf (buffer-mark buffer) nil))
+
+(defmethod keyboard-quit ((buffer standard-buffer))
+  "Cancel current operation and clear mark if set"
+  (when (buffer-get-mark buffer)
+    (buffer-clear-mark buffer))
+  t)
 
 (defmethod forward-char ((buffer standard-buffer))
   "Move point forward one character, wrapping to next line if needed"
