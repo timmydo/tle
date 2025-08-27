@@ -18,11 +18,11 @@
     (format t "~A~%~%" (tle::render-minibuffer editor))
     
     ;; Add some content to minibuffer
-    (tle::handle-minibuffer-input editor "h" nil nil nil)
-    (tle::handle-minibuffer-input editor "e" nil nil nil)
-    (tle::handle-minibuffer-input editor "l" nil nil nil)
-    (tle::handle-minibuffer-input editor "l" nil nil nil)
-    (tle::handle-minibuffer-input editor "o" nil nil nil)
+    (tle::handle-minibuffer-input editor "h" nil nil nil nil)
+    (tle::handle-minibuffer-input editor "e" nil nil nil nil)
+    (tle::handle-minibuffer-input editor "l" nil nil nil nil)
+    (tle::handle-minibuffer-input editor "l" nil nil nil nil)
+    (tle::handle-minibuffer-input editor "o" nil nil nil nil)
     
     (format t "==== MINIBUFFER (ACTIVE WITH CONTENT) ====~%")
     (format t "~A~%~%" (tle::render-minibuffer editor))

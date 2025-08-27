@@ -927,8 +927,9 @@
   (let ((key (jsown:val key-data "key"))
         (ctrl (jsown:val key-data "ctrl"))
         (alt (jsown:val key-data "alt"))
-        (shift (jsown:val key-data "shift")))
-    (format t "Key event received for app '~A'. Key: '~A', Ctrl: ~A, Alt: ~A~%" app-name key ctrl alt)
+        (shift (jsown:val key-data "shift"))
+        (meta (jsown:val key-data "meta")))
+    (format t "Key event received for app '~A'. Key: '~A', Ctrl: ~A, Alt: ~A, Meta: ~A~%" app-name key ctrl alt meta)
     
     ;; Get the current buffer for the application
     (let* ((app (get-application app-name))
@@ -938,7 +939,7 @@
       (when editor
         ;; First check if minibuffer is active and should handle the input
         (if (and (minibuffer-active-p editor) 
-                 (handle-minibuffer-input editor key ctrl alt shift))
+                 (handle-minibuffer-input editor key ctrl alt shift meta))
             ;; Minibuffer handled the input, do nothing more
             (format t "Minibuffer handled key: ~A~%" key)
             ;; Normal key handling when minibuffer is not active or didn't handle the key
@@ -994,8 +995,11 @@
                (format t "Ctrl-?: Redo operation performed~%")
                (format t "Ctrl-?: Nothing to redo~%")))
           ((and ctrl (string= key "s"))
+           (save-buffer-command editor)
+           (format t "Ctrl-S: Save buffer~%"))
+          ((and ctrl meta (string= key "s"))
            (activate-minibuffer editor "Search: " nil 'search-forward-command)
-           (format t "Ctrl-S: Search forward~%"))
+           (format t "Ctrl-Meta-S: Search forward~%"))
           ((and ctrl (string= key "r"))
            (activate-minibuffer editor "Search backward: " nil 'search-backward-command)
            (format t "Ctrl-R: Search backward~%"))

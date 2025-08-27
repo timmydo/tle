@@ -139,6 +139,9 @@
 (defgeneric save-buffer-as (buffer file-path)
   (:documentation "Save buffer contents to the specified file path and update buffer's file-path."))
 
+(defgeneric save-buffer (buffer)
+  (:documentation "Save buffer contents to its current file path."))
+
 ;; Undo tree data structures
 (defclass undo-record ()
   ((operation :initarg :operation :reader undo-operation)
@@ -2364,3 +2367,25 @@
       (error (condition)
         (format t "Error saving buffer to ~A: ~A~%" file-path condition)
         nil))))
+
+(defmethod save-buffer ((buffer standard-buffer))
+  "Save buffer contents to its current file path."
+  (let ((file-path (buffer-file-path buffer)))
+    (if file-path
+        (let* ((lines (loop for i from 0 below (buffer-line-count buffer)
+                            collect (buffer-line buffer i)))
+               (content (format nil "~{~A~^~%~}" lines)))
+          (handler-case
+              (with-open-file (stream file-path
+                                      :direction :output
+                                      :if-exists :supersede
+                                      :if-does-not-exist :create)
+                (write-string content stream)
+                (format t "Buffer saved to ~A~%" file-path)
+                t)
+            (error (condition)
+              (format t "Error saving buffer to ~A: ~A~%" file-path condition)
+              nil)))
+        (progn
+          (format t "Buffer has no file path. Use save-buffer-as to specify a path.~%")
+          nil))))

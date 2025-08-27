@@ -67,7 +67,7 @@ The buffer.lisp currently implements:
 - [ ] Auto-indentation based on mode
 
 ### 9. File Operations
-- [ ] `save-buffer` - Save buffer to file
+- [x] `save-buffer` - Save buffer to file
 - [x] `save-buffer-as` - Save buffer to new file
 - [ ] `load-file` - Load file into buffer
 - [ ] `revert-buffer` - Reload buffer from file

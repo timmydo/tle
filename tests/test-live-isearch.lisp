@@ -18,17 +18,17 @@
     (assert (equal (isearch-original-position editor) '(0 0)) () "Original position should be (0 0)")
     
     ;; Type 'w' - should find 'world' at position (0 6)
-    (handle-minibuffer-input editor "w" nil nil nil)
+    (handle-minibuffer-input editor "w" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 6)) () "Should find 'w' in 'world' at (0 6)")
     (assert (string= (get-minibuffer-contents editor) "w") () "Minibuffer should contain 'w'")
     
     ;; Type 'o' - should still be at 'world' 
-    (handle-minibuffer-input editor "o" nil nil nil)
+    (handle-minibuffer-input editor "o" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 6)) () "Should find 'wo' in 'world' at (0 6)")
     (assert (string= (get-minibuffer-contents editor) "wo") () "Minibuffer should contain 'wo'")
     
     ;; Complete the search
-    (handle-minibuffer-input editor "Enter" nil nil nil)
+    (handle-minibuffer-input editor "Enter" nil nil nil nil)
     (assert (not (minibuffer-active-p editor)) () "Minibuffer should be deactivated")
     (assert (equal (buffer-get-point buffer) '(0 6)) () "Cursor should stay at found position")
     (assert (not (isearch-original-position editor)) () "Original position should be cleared")
@@ -50,11 +50,11 @@
     
     ;; Start isearch and move cursor
     (start-isearch-forward editor)
-    (handle-minibuffer-input editor "w" nil nil nil)
+    (handle-minibuffer-input editor "w" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 6)) () "Should move to 'world'")
     
     ;; Cancel with escape
-    (handle-minibuffer-input editor "Escape" nil nil nil)
+    (handle-minibuffer-input editor "Escape" nil nil nil nil)
     (assert (not (minibuffer-active-p editor)) () "Minibuffer should be deactivated")
     (assert (equal (buffer-get-point buffer) '(0 0)) () "Should restore original position")
     (assert (not (isearch-original-position editor)) () "Original position should be cleared")
@@ -78,21 +78,21 @@
     (start-isearch-forward editor)
     
     ;; Type something that exists
-    (handle-minibuffer-input editor "w" nil nil nil)
+    (handle-minibuffer-input editor "w" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 6)) () "Should find 'w'")
     
     ;; Type something that makes it not found
-    (handle-minibuffer-input editor "x" nil nil nil)
+    (handle-minibuffer-input editor "x" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 0)) () "Should return to original position when not found")
     (assert (string= (get-minibuffer-contents editor) "wx") () "Minibuffer should contain 'wx'")
     
     ;; Backspace to make it found again
-    (handle-minibuffer-input editor "Backspace" nil nil nil)
+    (handle-minibuffer-input editor "Backspace" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 6)) () "Should find 'w' again after backspace")
     (assert (string= (get-minibuffer-contents editor) "w") () "Minibuffer should contain 'w'")
     
     ;; Cancel
-    (handle-minibuffer-input editor "Escape" nil nil nil)
+    (handle-minibuffer-input editor "Escape" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 0)) () "Should restore original position")
     
     (format t "✓ Test 1 passed: Not found behavior~%"))
@@ -114,17 +114,17 @@
     (start-isearch-forward editor)
     
     ;; Search for 'target' which is on line 2
-    (handle-minibuffer-input editor "t" nil nil nil)
+    (handle-minibuffer-input editor "t" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 4)) () "Should find first 't' in 'first' at (0 4)")
     
-    (handle-minibuffer-input editor "a" nil nil nil)
+    (handle-minibuffer-input editor "a" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(1 7)) () "Should find 'ta' in 'target' at (1 7)")
     
-    (handle-minibuffer-input editor "r" nil nil nil)
+    (handle-minibuffer-input editor "r" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(1 7)) () "Should find 'tar' in 'target' at (1 7)")
     
     ;; Complete the search
-    (handle-minibuffer-input editor "Enter" nil nil nil)
+    (handle-minibuffer-input editor "Enter" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(1 7)) () "Should stay at target position")
     
     (format t "✓ Test 1 passed: Multiline search~%"))
@@ -147,15 +147,15 @@
     (assert (equal (isearch-original-position editor) '(0 5)) () "Should store original position (0 5)")
     
     ;; Type and then delete to empty string
-    (handle-minibuffer-input editor "w" nil nil nil)
+    (handle-minibuffer-input editor "w" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 6)) () "Should find 'w'")
     
-    (handle-minibuffer-input editor "Backspace" nil nil nil)
+    (handle-minibuffer-input editor "Backspace" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 5)) () "Should restore to original position with empty search")
     (assert (string= (get-minibuffer-contents editor) "") () "Minibuffer should be empty")
     
     ;; Cancel
-    (handle-minibuffer-input editor "Escape" nil nil nil)
+    (handle-minibuffer-input editor "Escape" nil nil nil nil)
     (assert (equal (buffer-get-point buffer) '(0 5)) () "Should stay at original position")
     
     (format t "✓ Test 1 passed: Empty string behavior~%"))

@@ -146,7 +146,7 @@
         (funcall command-function editor)
         (format t "Unknown command: ~A~%" command-name))))
 
-(defun handle-minibuffer-input (editor key ctrl alt shift)
+(defun handle-minibuffer-input (editor key ctrl alt shift &optional meta)
   "Handle input when minibuffer is active."
   (let ((minibuf (minibuffer editor)))
     (cond
@@ -267,6 +267,14 @@
       (if (search-backward buffer (string-trim " " search-string))
           (format t "Found: ~A~%" search-string)
           (format t "Not found: ~A~%" search-string)))))
+
+(defun save-buffer-command (editor)
+  "Save the current buffer to its file."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (if (save-buffer buffer)
+          (format t "Buffer saved successfully~%")
+          (format t "Failed to save buffer~%")))))
 
 (defun query-replace-from-command (from-string editor)
   "First step of query-replace - get the 'from' string and prompt for 'to' string."
@@ -730,7 +738,7 @@
 
 ;; Register some basic commands
 (register-command "quit" (lambda (editor) (format t "Quit command executed~%")))
-(register-command "save-buffer" (lambda (editor) (format t "Save buffer command executed~%")))
+(register-command "save-buffer" (lambda (editor) (save-buffer-command editor)))
 (register-command "save-buffer-as" 
   (lambda (editor) 
     (activate-minibuffer editor "Save buffer as: " nil 

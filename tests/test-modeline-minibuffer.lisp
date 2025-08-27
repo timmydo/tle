@@ -65,22 +65,22 @@
     (tle::activate-minibuffer editor "Command: ")
     
     ;; Test character insertion
-    (assert (tle::handle-minibuffer-input editor "t" nil nil nil))
-    (assert (tle::handle-minibuffer-input editor "e" nil nil nil))
-    (assert (tle::handle-minibuffer-input editor "s" nil nil nil))
-    (assert (tle::handle-minibuffer-input editor "t" nil nil nil))
+    (assert (tle::handle-minibuffer-input editor "t" nil nil nil nil))
+    (assert (tle::handle-minibuffer-input editor "e" nil nil nil nil))
+    (assert (tle::handle-minibuffer-input editor "s" nil nil nil nil))
+    (assert (tle::handle-minibuffer-input editor "t" nil nil nil nil))
     
     ;; Check contents
     (let ((contents (tle::get-minibuffer-contents editor)))
       (assert (string= contents "test")))
     
     ;; Test backspace
-    (assert (tle::handle-minibuffer-input editor "Backspace" nil nil nil))
+    (assert (tle::handle-minibuffer-input editor "Backspace" nil nil nil nil))
     (let ((contents-after-backspace (tle::get-minibuffer-contents editor)))
       (assert (string= contents-after-backspace "tes")))
     
     ;; Test escape (should deactivate minibuffer)
-    (assert (tle::handle-minibuffer-input editor "Escape" nil nil nil))
+    (assert (tle::handle-minibuffer-input editor "Escape" nil nil nil nil))
     (assert (not (tle::minibuffer-active-p editor)))))
 
 (defun test-execute-command ()
@@ -103,9 +103,9 @@
     (assert (string= (tle::get-minibuffer-contents editor) "")) ; Should start empty
     
     ;; Add some content
-    (tle::handle-minibuffer-input editor "o" nil nil nil)
-    (tle::handle-minibuffer-input editor "l" nil nil nil)
-    (tle::handle-minibuffer-input editor "d" nil nil nil)
+    (tle::handle-minibuffer-input editor "o" nil nil nil nil)
+    (tle::handle-minibuffer-input editor "l" nil nil nil nil)
+    (tle::handle-minibuffer-input editor "d" nil nil nil nil)
     
     ;; Verify we have the expected content only
     (let ((contents-before (tle::get-minibuffer-contents editor)))

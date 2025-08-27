@@ -324,7 +324,7 @@
       (assert (equal initial-point '(0 16)) () "Initial position should be (0 16)")
       
       ;; Simulate pressing Enter (this should execute the callback)
-      (handle-minibuffer-input editor "Enter" nil nil nil)
+      (handle-minibuffer-input editor "Enter" nil nil nil nil)
       
       ;; Verify minibuffer is deactivated
       (assert (not (minibuffer-active-p editor)) () 
@@ -353,7 +353,7 @@
     
     (let ((initial-point (buffer-get-point buffer)))
       ;; Press Escape to cancel
-      (handle-minibuffer-input editor "Escape" nil nil nil)
+      (handle-minibuffer-input editor "Escape" nil nil nil nil)
       
       ;; Verify minibuffer is deactivated
       (assert (not (minibuffer-active-p editor)) () 

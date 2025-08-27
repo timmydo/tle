@@ -290,7 +290,7 @@
       (assert (equal initial-point '(0 0)) () "Initial position should be (0 0)")
       
       ;; Simulate pressing Enter (this should execute the callback)
-      (handle-minibuffer-input editor "Enter" nil nil nil)
+      (handle-minibuffer-input editor "Enter" nil nil nil nil)
       
       ;; Verify minibuffer is deactivated
       (assert (not (minibuffer-active-p editor)) () 
@@ -319,7 +319,7 @@
     
     (let ((initial-point (buffer-get-point buffer)))
       ;; Press Escape to cancel
-      (handle-minibuffer-input editor "Escape" nil nil nil)
+      (handle-minibuffer-input editor "Escape" nil nil nil nil)
       
       ;; Verify minibuffer is deactivated
       (assert (not (minibuffer-active-p editor)) () 
@@ -366,7 +366,7 @@
       (insert-char minibuf #\d))
     
     ;; Execute the callback by pressing Enter
-    (handle-minibuffer-input editor "Enter" nil nil nil)
+    (handle-minibuffer-input editor "Enter" nil nil nil nil)
     
     ;; Verify the search worked (cursor moved)
     (let ((final-point (buffer-get-point buffer)))
