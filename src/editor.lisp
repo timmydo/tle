@@ -46,8 +46,9 @@
         (let ((point (buffer-get-point buffer)))
           (list :filename (buffer-name buffer)
                 :line (1+ (first point))
-                :column (1+ (second point))))
-        (list :filename "No buffer" :line 0 :column 0))))
+                :column (1+ (second point))
+                :dirty (buffer-dirty-p buffer)))
+        (list :filename "No buffer" :line 0 :column 0 :dirty nil))))
 
 (defun activate-minibuffer (editor prompt &optional completion-function callback-function live-callback-function)
   "Activate the minibuffer with the given prompt, optional completion function, callback function, and live callback function."
@@ -99,7 +100,8 @@
 
 (defun render-modeline (modeline-info)
   "Render the modeline showing filename, line, and column."
-  (format nil "<div class=\"modeline\">~A Line:~D Col:~D</div>"
+  (format nil "<div class=\"modeline\">~A~A Line:~D Col:~D</div>"
+          (if (getf modeline-info :dirty) "* " "")
           (getf modeline-info :filename)
           (getf modeline-info :line)
           (getf modeline-info :column)))

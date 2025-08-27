@@ -179,7 +179,8 @@
    (%yank-pointer :initform 0 :accessor buffer-yank-pointer)
    (%last-yank :initform nil :accessor buffer-last-yank)
    (%isearch-term :initform nil :accessor buffer-isearch-term)
-   (%isearch-active :initform nil :accessor buffer-isearch-active-p))
+   (%isearch-active :initform nil :accessor buffer-isearch-active-p)
+   (%dirty :initform nil :accessor buffer-dirty-p))
   (:documentation "A stardard buffer implementation"))
 
 (defun make-standard-buffer (name)
@@ -213,9 +214,19 @@
   )
 
 ;; Undo tree operations
+(defun mark-buffer-dirty (buffer)
+  "Mark buffer as dirty (modified)"
+  (setf (buffer-dirty-p buffer) t))
+
+(defun mark-buffer-clean (buffer)
+  "Mark buffer as clean (not modified)"
+  (setf (buffer-dirty-p buffer) nil))
+
 (defun add-undo-record (buffer operation position data)
   "Add a new undo record to the buffer's undo tree"
   (when (buffer-recording-undo-p buffer)
+    ;; Mark buffer as dirty when any change is made
+    (mark-buffer-dirty buffer)
     (let* ((tree (buffer-undo-tree buffer))
            (record (make-instance 'undo-record 
                                   :operation operation 
@@ -2362,6 +2373,7 @@
                                 :if-does-not-exist :create)
           (write-string content stream)
           (setf (buffer-file-path buffer) file-path)
+          (mark-buffer-clean buffer)
           (format t "Buffer saved to ~A~%" file-path)
           t)
       (error (condition)
@@ -2381,6 +2393,7 @@
                                       :if-exists :supersede
                                       :if-does-not-exist :create)
                 (write-string content stream)
+                (mark-buffer-clean buffer)
                 (format t "Buffer saved to ~A~%" file-path)
                 t)
             (error (condition)
