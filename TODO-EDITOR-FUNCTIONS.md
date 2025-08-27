@@ -68,7 +68,7 @@ The buffer.lisp currently implements:
 
 ### 9. File Operations
 - [ ] `save-buffer` - Save buffer to file
-- [ ] `save-buffer-as` - Save buffer to new file
+- [x] `save-buffer-as` - Save buffer to new file
 - [ ] `load-file` - Load file into buffer
 - [ ] `revert-buffer` - Reload buffer from file
 - [ ] `write-file` - Write buffer to file

@@ -731,6 +731,13 @@
 ;; Register some basic commands
 (register-command "quit" (lambda (editor) (format t "Quit command executed~%")))
 (register-command "save-buffer" (lambda (editor) (format t "Save buffer command executed~%")))
+(register-command "save-buffer-as" 
+  (lambda (editor) 
+    (activate-minibuffer editor "Save buffer as: " nil 
+                         (lambda (file-path editor)
+                           (let ((buffer (current-buffer editor)))
+                             (when buffer
+                               (save-buffer-as buffer (string-trim " " file-path))))))))
 (register-command "kill-buffer" (lambda (editor) (format t "Kill buffer command executed~%")))
 (register-command "list-buffers" (lambda (editor) (format t "List buffers command executed~%")))
 

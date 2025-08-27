@@ -1062,6 +1062,13 @@
           ((and alt (string= key "%"))
            (start-query-replace editor)
            (format t "Alt-%: Query replace~%"))
+          ((and ctrl alt (string= key "w"))
+           (activate-minibuffer editor "Save buffer as: " nil 
+                                (lambda (file-path editor)
+                                  (let ((buffer (current-buffer editor)))
+                                    (when buffer
+                                      (save-buffer-as buffer (string-trim " " file-path))))))
+           (format t "Ctrl-Alt-W: Save buffer as (C-x C-w equivalent)~%"))
           
           ;; Enter key for newline insertion
           ((string= key "Enter")

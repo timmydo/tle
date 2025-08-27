@@ -136,6 +136,8 @@
 (defgeneric query-replace (buffer from-string to-string)
   (:documentation "Interactive find and replace. Prompts user for each replacement."))
 
+(defgeneric save-buffer-as (buffer file-path)
+  (:documentation "Save buffer contents to the specified file path and update buffer's file-path."))
 
 ;; Undo tree data structures
 (defclass undo-record ()
@@ -166,6 +168,7 @@
   ((%lines :initform (make-array 0) :accessor lines)
    (%undo-tree :initform (make-instance 'undo-tree) :accessor buffer-undo-tree)
    (%name :initarg :name :accessor buffer-name :initform "Untitled")
+   (%file-path :initarg :file-path :accessor buffer-file-path :initform nil)
    (%point :initform (list 0 0) :accessor buffer-point)
    (%mark :initform nil :accessor buffer-mark)
    (%recording-undo :initform t :accessor buffer-recording-undo-p)
@@ -2343,3 +2346,21 @@
                 (end (second match)))
             (and (>= char-pos start) (< char-pos end))))
         isearch-matches))
+
+(defmethod save-buffer-as ((buffer standard-buffer) file-path)
+  "Save buffer contents to the specified file path and update buffer's file-path."
+  (let* ((lines (loop for i from 0 below (buffer-line-count buffer)
+                      collect (buffer-line buffer i)))
+         (content (format nil "~{~A~^~%~}" lines)))
+    (handler-case
+        (with-open-file (stream file-path
+                                :direction :output
+                                :if-exists :supersede
+                                :if-does-not-exist :create)
+          (write-string content stream)
+          (setf (buffer-file-path buffer) file-path)
+          (format t "Buffer saved to ~A~%" file-path)
+          t)
+      (error (condition)
+        (format t "Error saving buffer to ~A: ~A~%" file-path condition)
+        nil))))
