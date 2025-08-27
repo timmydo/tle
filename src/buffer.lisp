@@ -180,7 +180,8 @@
    (%last-yank :initform nil :accessor buffer-last-yank)
    (%isearch-term :initform nil :accessor buffer-isearch-term)
    (%isearch-active :initform nil :accessor buffer-isearch-active-p)
-   (%dirty :initform nil :accessor buffer-dirty-p))
+   (%dirty :initform nil :accessor buffer-dirty-p)
+   (%saved-undo-state :initform nil :accessor buffer-saved-undo-state))
   (:documentation "A stardard buffer implementation"))
 
 (defun make-standard-buffer (name)
@@ -219,8 +220,17 @@
   (setf (buffer-dirty-p buffer) t))
 
 (defun mark-buffer-clean (buffer)
-  "Mark buffer as clean (not modified)"
-  (setf (buffer-dirty-p buffer) nil))
+  "Mark buffer as clean (not modified) and record current undo state as saved"
+  (setf (buffer-dirty-p buffer) nil)
+  (setf (buffer-saved-undo-state buffer) (tree-current (buffer-undo-tree buffer))))
+
+(defun update-dirty-bit-after-undo-redo (buffer)
+  "Update dirty bit based on whether current undo state matches saved state"
+  (let ((saved-state (buffer-saved-undo-state buffer))
+        (current-state (tree-current (buffer-undo-tree buffer))))
+    (if (eq saved-state current-state)
+        (setf (buffer-dirty-p buffer) nil)
+        (setf (buffer-dirty-p buffer) t))))
 
 (defun add-undo-record (buffer operation position data)
   "Add a new undo record to the buffer's undo tree"
@@ -664,6 +674,8 @@
       ;; Move to parent node
       (when (node-parent current)
         (setf (tree-current tree) (node-parent current)))
+      ;; Update dirty bit based on whether we're back to saved state
+      (update-dirty-bit-after-undo-redo buffer)
       t)))
 
 (defmethod buffer-redo ((buffer standard-buffer))
@@ -681,6 +693,8 @@
         (setf (buffer-recording-undo-p buffer) old-recording)
         ;; Move to the child node
         (setf (tree-current tree) next-node)
+        ;; Update dirty bit based on whether we're back to saved state
+        (update-dirty-bit-after-undo-redo buffer)
         t))))
 
 (defmethod buffer-move-forward ((buffer standard-buffer) amount)
