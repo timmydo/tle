@@ -616,6 +616,22 @@
              ;; Replace entire buffer content with the changed version
              (setf (lines buffer) (copy-seq new-content))
              ;; Move to a reasonable position (keep current position)
+             )))
+      (:query-replace-interactive
+       (if reverse-p
+           ;; Undo interactive replace: restore entire original content (same as batch)
+           (let* ((replace-data data)
+                  (original-content (getf replace-data :original-content)))
+             ;; Replace entire buffer content
+             (setf (lines buffer) (copy-seq original-content))
+             ;; Restore original position
+             (buffer-set-point buffer (first position) (second position)))
+           ;; Redo interactive replace: restore changed content (same as batch)
+           (let* ((replace-data data)
+                  (new-content (getf replace-data :new-content)))
+             ;; Replace entire buffer content with the changed version
+             (setf (lines buffer) (copy-seq new-content))
+             ;; Move to a reasonable position (keep current position)
              ))))))
 
 (defmethod buffer-undo ((buffer standard-buffer))

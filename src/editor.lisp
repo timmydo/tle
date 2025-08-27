@@ -23,6 +23,8 @@
    (%query-replace-current-match :accessor query-replace-current-match :initform 0)
    (%query-replace-replacements :accessor query-replace-replacements :initform nil)
    (%query-replace-original-position :accessor query-replace-original-position :initform nil)
+   (%query-replace-original-content :accessor query-replace-original-content :initform nil)
+   (%query-replace-old-recording :accessor query-replace-old-recording :initform nil)
    (%in-recursive-edit :accessor in-recursive-edit-p :initform nil)))
 
 (defun make-standard-editor ()
@@ -299,8 +301,13 @@
   (let ((buffer (current-buffer editor)))
     (when (and buffer from-string to-string 
                (> (length from-string) 0))
-      ;; Store original position for cancellation
+      ;; Store original position and content for undo
       (setf (query-replace-original-position editor) (buffer-get-point buffer))
+      (setf (query-replace-original-content editor) (copy-seq (lines buffer)))
+      
+      ;; Disable undo recording during the session
+      (setf (query-replace-old-recording editor) (buffer-recording-undo-p buffer))
+      (setf (buffer-recording-undo-p buffer) nil)
       
       ;; Check if region is active for feedback
       (let ((mark (buffer-get-mark buffer))
@@ -394,12 +401,20 @@
 
 (defun clear-query-replace-state (editor)
   "Clear query-replace state."
+  ;; Restore undo recording state if it was modified
+  (when (query-replace-old-recording editor)
+    (let ((buffer (current-buffer editor)))
+      (when buffer
+        (setf (buffer-recording-undo-p buffer) (query-replace-old-recording editor)))))
+  
   (setf (query-replace-active-p editor) nil)
   (setf (query-replace-to-string editor) nil)
   (setf (query-replace-matches editor) nil)
   (setf (query-replace-current-match editor) 0)
   (setf (query-replace-replacements editor) nil)
-  (setf (query-replace-original-position editor) nil))
+  (setf (query-replace-original-position editor) nil)
+  (setf (query-replace-original-content editor) nil)
+  (setf (query-replace-old-recording editor) nil))
 
 (defun perform-current-replacement (editor)
   "Replace the current match."
@@ -459,7 +474,29 @@
 
 (defun finish-query-replace (editor)
   "Finish query-replace session and show summary."
-  (let ((replacement-count (length (query-replace-replacements editor))))
+  (let* ((buffer (current-buffer editor))
+         (replacement-count (length (query-replace-replacements editor)))
+         (original-content (query-replace-original-content editor))
+         (original-position (query-replace-original-position editor))
+         (old-recording (query-replace-old-recording editor)))
+    
+    ;; If replacements were made, create a single undo record
+    (when (and (> replacement-count 0) original-content original-position)
+      ;; Re-enable undo recording to add our comprehensive record
+      (setf (buffer-recording-undo-p buffer) old-recording)
+      
+      ;; Add single undo record for all replacements (similar to batch mode)
+      (add-undo-record buffer :query-replace-interactive original-position
+                       (list :original-content original-content
+                             :new-content (copy-seq (lines buffer))
+                             :from-string (query-replace-from-string editor)
+                             :to-string (query-replace-to-string editor)
+                             :replacements replacement-count)))
+    
+    ;; If no replacements were made, just restore undo recording
+    (when (and (= replacement-count 0) old-recording)
+      (setf (buffer-recording-undo-p buffer) old-recording))
+    
     (format t "Query replace finished. Made ~A replacement~:P~%" replacement-count)
     (clear-query-replace-state editor)))
 
