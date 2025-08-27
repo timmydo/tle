@@ -273,6 +273,63 @@
   
   (format t "All query-replace complex pattern tests passed!~%~%"))
 
+(defun test-query-replace-region-handling ()
+  "Test that query-replace handles regions correctly (and doesn't get confused by default marks)"
+  (format t "Running query-replace region handling tests...~%")
+  
+  ;; Test 1: Default buffer should not have unintended region restriction
+  (let ((buf (make-instance 'standard-buffer)))
+    (setf (lines buf) #("hello world test world end"))
+    (buffer-set-point buf 0 0)
+    ;; Ensure no mark is set (no unintended region)
+    (buffer-clear-mark buf)
+    (let ((result (query-replace buf "world" "universe")))
+      (assert (= result 2) () "Test 1 failed: should replace 2 occurrences without region restriction")
+      (let ((line (buffer-line buf 0)))
+        (assert (string= line "hello universe test universe end") () 
+                "Test 1 failed: expected 'hello universe test universe end', got '~A'" line)))
+    (format t "✓ Test 1 passed: No region restriction finds both matches~%"))
+  
+  ;; Test 2: Note - batch query-replace doesn't respect regions, only interactive does
+  ;; This test documents the current behavior
+  (let ((buf (make-instance 'standard-buffer)))
+    (setf (lines buf) #("hello world test world end"))
+    (buffer-set-point buf 0 0)
+    (buffer-set-mark buf 0 11) ; Region covers only "hello world"
+    (let ((result (query-replace buf "world" "universe")))
+      ;; Batch query-replace ignores regions and replaces all
+      (assert (= result 2) () "Test 2 failed: batch query-replace ignores regions and replaces all")
+      (let ((line (buffer-line buf 0)))
+        (assert (string= line "hello universe test universe end") () 
+                "Test 2 failed: expected 'hello universe test universe end', got '~A'" line)))
+    (format t "✓ Test 2 passed: Batch query-replace ignores regions~%"))
+  
+  ;; Test 3: Find-matches-from-point should find all matches without region
+  (let ((buf (make-instance 'standard-buffer)))
+    (setf (lines buf) #("hello world test world end"))
+    (buffer-set-point buf 0 0)
+    (buffer-clear-mark buf) ; Ensure no region
+    (let ((matches (find-matches-from-point buf "world")))
+      (assert (= (length matches) 2) () 
+              "Test 3 failed: should find 2 matches without region, got ~A" (length matches))
+      (assert (equal matches '((0 6) (0 17))) () 
+              "Test 3 failed: expected matches at (0 6) and (0 17), got ~A" matches))
+    (format t "✓ Test 3 passed: find-matches-from-point finds all matches without region~%"))
+  
+  ;; Test 4: Find-matches-from-point should respect region when mark is set
+  (let ((buf (make-instance 'standard-buffer)))
+    (setf (lines buf) #("hello world test world end"))
+    (buffer-set-point buf 0 0)
+    (buffer-set-mark buf 0 11) ; Region covers only "hello world"
+    (let ((matches (find-matches-from-point buf "world")))
+      (assert (= (length matches) 1) () 
+              "Test 4 failed: should find 1 match within region, got ~A" (length matches))
+      (assert (equal matches '((0 6))) () 
+              "Test 4 failed: expected match at (0 6), got ~A" matches))
+    (format t "✓ Test 4 passed: find-matches-from-point respects region when mark is set~%"))
+  
+  (format t "All query-replace region handling tests passed!~%~%"))
+
 (defun run-all-query-replace-tests ()
   "Run all query-replace tests"
   (format t "~%======================================~%")
@@ -286,6 +343,7 @@
         (test-query-replace-position-handling)
         (test-query-replace-undo)
         (test-query-replace-complex-patterns)
+        (test-query-replace-region-handling)
         (format t "~%======================================~%")
         (format t "All query-replace tests passed successfully!~%")
         (format t "======================================~%"))

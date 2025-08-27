@@ -178,7 +178,7 @@
     (setf (lines buf) #("line 1 with some text" "line 2 with more content" "line 3 final line"))
     (setf (buffer-name buf) name)
     (buffer-set-point buf 2 5)
-    (buffer-set-mark buf 0 7)
+    ;; Don't set a default mark - let users set their own regions when needed
     buf))
 
 (defun make-empty-buffer (name)
