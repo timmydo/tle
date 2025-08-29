@@ -960,6 +960,14 @@
            (forward-char buffer)
            (format t "Moved cursor right~%"))
           
+          ;; Home and End keys
+          ((string= key "Home")
+           (beginning-of-line buffer)
+           (format t "Home: Moved cursor to beginning of line~%"))
+          ((string= key "End")
+           (end-of-line buffer)
+           (format t "End: Moved cursor to end of line~%"))
+          
           ;; Ctrl key combinations
           ((and ctrl (string= key "p"))
            (previous-line buffer)
@@ -997,6 +1005,11 @@
           ((and ctrl (string= key "s"))
            (save-buffer-command editor)
            (format t "Ctrl-S: Save buffer~%"))
+          ((and ctrl (string= key "o"))
+           (activate-minibuffer editor "Load file: " nil 
+                                (lambda (file-path editor)
+                                  (load-file-command file-path editor)))
+           (format t "Ctrl-O: Load file~%"))
           ((and ctrl meta (string= key "s"))
            (activate-minibuffer editor "Search: " nil 'search-forward-command)
            (format t "Ctrl-Meta-S: Search forward~%"))

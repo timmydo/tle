@@ -278,6 +278,14 @@
           (format t "Buffer saved successfully~%")
           (format t "Failed to save buffer~%")))))
 
+(defun load-file-command (file-path editor)
+  "Load a file into the current buffer."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (if (load-file buffer (string-trim " " file-path))
+          (format t "File loaded successfully~%")
+          (format t "Failed to load file~%")))))
+
 (defun query-replace-from-command (from-string editor)
   "First step of query-replace - get the 'from' string and prompt for 'to' string."
   (let ((trimmed-from (string-trim " " from-string)))
@@ -748,6 +756,11 @@
                            (let ((buffer (current-buffer editor)))
                              (when buffer
                                (save-buffer-as buffer (string-trim " " file-path))))))))
+(register-command "load-file" 
+  (lambda (editor) 
+    (activate-minibuffer editor "Load file: " nil 
+                         (lambda (file-path editor)
+                           (load-file-command file-path editor)))))
 (register-command "kill-buffer" (lambda (editor) (format t "Kill buffer command executed~%")))
 (register-command "list-buffers" (lambda (editor) (format t "List buffers command executed~%")))
 

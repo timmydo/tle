@@ -142,6 +142,9 @@
 (defgeneric save-buffer (buffer)
   (:documentation "Save buffer contents to its current file path."))
 
+(defgeneric load-file (buffer file-path)
+  (:documentation "Load file contents into buffer and update buffer's file-path."))
+
 ;; Undo tree data structures
 (defclass undo-record ()
   ((operation :initarg :operation :reader undo-operation)
@@ -263,6 +266,12 @@
       (setf (tree-current tree) (tree-root tree)
             (node-children (tree-root tree)) '()
             (tree-size tree) 0))))
+
+(defun clear-undo-history (buffer)
+  "Clear all undo history for the buffer"
+  (let ((new-tree (make-instance 'undo-tree)))
+    (setf (buffer-undo-tree buffer) new-tree)
+    (setf (buffer-saved-undo-state buffer) (tree-current new-tree))))
 
 (defun kill-region-without-undo (buffer)
   "Delete text between mark and point without recording undo information"
@@ -2416,3 +2425,35 @@
         (progn
           (format t "Buffer has no file path. Use save-buffer-as to specify a path.~%")
           nil))))
+
+(defmethod load-file ((buffer standard-buffer) file-path)
+  "Load file contents into buffer and update buffer's file-path."
+  (handler-case
+      (with-open-file (stream file-path
+                              :direction :input
+                              :if-does-not-exist :error)
+        (let ((lines '()))
+          ;; Read all lines from file
+          (loop for line = (read-line stream nil)
+                while line
+                do (push line lines))
+          ;; Update buffer with file contents
+          (setf (lines buffer) (make-array (max 1 (length lines))
+                                           :initial-contents (if lines
+                                                                 (nreverse lines)
+                                                                 '(""))))
+          ;; Update buffer metadata
+          (setf (buffer-file-path buffer) file-path)
+          (setf (buffer-name buffer) (pathname-name (pathname file-path)))
+          ;; Position cursor at beginning of file
+          (buffer-set-point buffer 0 0)
+          (buffer-clear-mark buffer)
+          ;; Clear undo history for loaded file
+          (clear-undo-history buffer)
+          ;; Mark buffer as clean
+          (mark-buffer-clean buffer)
+          (format t "Loaded file ~A (~D lines)~%" file-path (buffer-line-count buffer))
+          t))
+    (error (condition)
+      (format t "Error loading file ~A: ~A~%" file-path condition)
+      nil)))
