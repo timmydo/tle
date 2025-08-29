@@ -67,6 +67,12 @@
 (defgeneric end-of-buffer (buffer)
   (:documentation "Move point to the end of the buffer"))
 
+(defgeneric page-up (buffer)
+  (:documentation "Move point up one page (screen height)"))
+
+(defgeneric page-down (buffer)
+  (:documentation "Move point down one page (screen height)"))
+
 (defgeneric goto-line (buffer line-number)
   (:documentation "Jump to the specified line number (1-indexed)"))
 
@@ -840,6 +846,33 @@
            (last-line (buffer-line buffer last-line-num))
            (last-line-length (length last-line)))
       (buffer-set-point buffer last-line-num last-line-length))))
+
+(defmethod page-up ((buffer standard-buffer))
+  "Move point up one page (approximately 20 lines)"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (current-line (first point))
+           (col (second point))
+           (page-size 20)
+           (target-line (max 0 (- current-line page-size)))
+           (line-text (buffer-line buffer target-line))
+           (line-length (length line-text))
+           (new-col (min col line-length)))
+      (buffer-set-point buffer target-line new-col))))
+
+(defmethod page-down ((buffer standard-buffer))
+  "Move point down one page (approximately 20 lines)"
+  (when (> (buffer-line-count buffer) 0)
+    (let* ((point (buffer-get-point buffer))
+           (current-line (first point))
+           (col (second point))
+           (page-size 20)
+           (max-line (1- (buffer-line-count buffer)))
+           (target-line (min max-line (+ current-line page-size)))
+           (line-text (buffer-line buffer target-line))
+           (line-length (length line-text))
+           (new-col (min col line-length)))
+      (buffer-set-point buffer target-line new-col))))
 
 (defmethod goto-line ((buffer standard-buffer) line-number)
   "Jump to the specified line number (1-indexed)"

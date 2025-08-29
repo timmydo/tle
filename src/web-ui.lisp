@@ -968,6 +968,14 @@
            (end-of-line buffer)
            (format t "End: Moved cursor to end of line~%"))
           
+          ;; Page Up and Page Down keys
+          ((string= key "PageUp")
+           (page-up buffer)
+           (format t "PageUp: Moved cursor up one page~%"))
+          ((string= key "PageDown")
+           (page-down buffer)
+           (format t "PageDown: Moved cursor down one page~%"))
+          
           ;; Ctrl key combinations
           ((and ctrl (string= key "p"))
            (previous-line buffer)
