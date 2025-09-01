@@ -286,6 +286,14 @@
           (format t "File loaded successfully~%")
           (format t "Failed to load file~%")))))
 
+(defun revert-file-command (editor)
+  "Revert the current buffer to its saved state on disk."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (if (revert-buffer buffer)
+          (format t "Buffer reverted successfully~%")
+          (format t "Failed to revert buffer~%")))))
+
 (defun query-replace-from-command (from-string editor)
   "First step of query-replace - get the 'from' string and prompt for 'to' string."
   (let ((trimmed-from (string-trim " " from-string)))

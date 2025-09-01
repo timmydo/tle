@@ -151,6 +151,9 @@
 (defgeneric load-file (buffer file-path)
   (:documentation "Load file contents into buffer and update buffer's file-path."))
 
+(defgeneric revert-buffer (buffer)
+  (:documentation "Reload buffer contents from its current file path, discarding any unsaved changes."))
+
 ;; Undo tree data structures
 (defclass undo-record ()
   ((operation :initarg :operation :reader undo-operation)
@@ -2490,3 +2493,37 @@
     (error (condition)
       (format t "Error loading file ~A: ~A~%" file-path condition)
       nil)))
+
+(defmethod revert-buffer ((buffer standard-buffer))
+  "Reload buffer contents from its current file path, discarding any unsaved changes."
+  (let ((file-path (buffer-file-path buffer)))
+    (if file-path
+        (handler-case
+            (with-open-file (stream file-path
+                                    :direction :input
+                                    :if-does-not-exist :error)
+              (let ((lines '()))
+                ;; Read all lines from file
+                (loop for line = (read-line stream nil)
+                      while line
+                      do (push line lines))
+                ;; Update buffer with file contents
+                (setf (lines buffer) (make-array (max 1 (length lines))
+                                                 :initial-contents (if lines
+                                                                       (nreverse lines)
+                                                                       '(""))))
+                ;; Position cursor at beginning of file
+                (buffer-set-point buffer 0 0)
+                (buffer-clear-mark buffer)
+                ;; Clear undo history for reverted file
+                (clear-undo-history buffer)
+                ;; Mark buffer as clean
+                (mark-buffer-clean buffer)
+                (format t "Reverted buffer from ~A (~D lines)~%" file-path (buffer-line-count buffer))
+                t))
+          (error (condition)
+            (format t "Error reverting buffer from ~A: ~A~%" file-path condition)
+            nil))
+        (progn
+          (format t "Buffer has no associated file. Cannot revert.~%")
+          nil))))

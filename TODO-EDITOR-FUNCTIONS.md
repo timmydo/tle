@@ -70,7 +70,7 @@ The buffer.lisp currently implements:
 - [x] `save-buffer` - Save buffer to file
 - [x] `save-buffer-as` - Save buffer to new file
 - [x] `load-file` - Load file into buffer
-- [ ] `revert-buffer` - Reload buffer from file
+- [x] `revert-buffer` - Reload buffer from file
 - [ ] `write-file` - Write buffer to file
 - [ ] File modification tracking (dirty flag)
 
