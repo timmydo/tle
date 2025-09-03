@@ -1,3 +1,4 @@
 #!/bin/sh
 # Start TLE (Timmy's Lisp Environment)
-exec sbcl --non-interactive --eval '(ql:quickload :tle)' --eval '(tle:main)'
+export CL_SOURCE_REGISTRY="$(pwd)/vendor//:"
+exec sbcl --non-interactive --eval '(asdf:load-system :tle)' --eval '(tle:main)'

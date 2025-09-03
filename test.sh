@@ -1,6 +1,8 @@
 #!/bin/sh
 # Test script for TLE (Timmy's Lisp Environment)
 
+export CL_SOURCE_REGISTRY="$(pwd)/vendor//:"
+
 echo "Starting TLE tests..."
 
 # Start TLE in background
@@ -37,7 +39,7 @@ for test_file in tests/test*.lisp; do
         test_function=$(grep -o "defun run-all-[^(]*" "$test_file" | head -1 | sed 's/defun //')
         if [ -n "$test_function" ]; then
             if sbcl --non-interactive \
-                    --eval "(ql:quickload :tle)" \
+                    --eval "(asdf:load-system :tle)" \
                     --eval "(load \"$test_file\")" \
                     --eval "(if (tle::$test_function) (sb-ext:exit :code 0) (sb-ext:exit :code 1))" 2>/dev/null; then
                 TESTS_PASSED=$((TESTS_PASSED + 1))
