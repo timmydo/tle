@@ -30,8 +30,6 @@
   ()
   (:documentation "A base class for mouse UI events"))
 
-(defgeneric run-ui (ui-implementation editor))
-
 (defgeneric ui-window-size (window ui)
   (:documentation "return values for width and height"))
 

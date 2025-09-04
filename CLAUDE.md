@@ -10,11 +10,12 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 
 ### Building and Running
 - **Quick start**: `./start.sh` - convenience script to start TLE
-- **Manual start**: `sbcl --non-interactive --eval '(ql:quickload :tle)' --eval '(tle:main)'`
+- **Manual start**: `sbcl --no-userinit --non-interactive --eval '(sb-int:set-floating-point-modes :traps nil)' --eval "(require \"asdf\")" --eval '(asdf:load-system :tle)' --eval '(tle:main)'`
 - **REPL mode**: 
   - Load system: `(ql:quickload :tle)` in a Lisp REPL
   - Run application: `(tle:main)` - starts web server on http://localhost:8080
 - **Entry point**: `src/main.lisp` contains the main function
+- **Port configuration**: Set `TLE_PORT` environment variable to use a specific port (e.g., `TLE_PORT=3000 ./start.sh`). If not set, automatically finds an available port starting from 8080.
 
 ### Testing
 - **Run tests**: `./test.sh` - runs basic server functionality tests

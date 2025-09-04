@@ -7,6 +7,8 @@ disinterest in becoming an IDE for other programming languages.
 
 Core prinicples are simplicity and minimizing dependencies.
 
+All dependencies are under vendor/ and they are imported using asdf
+and `CL_SOURCE_REGISTRY`.
 
 # Webview
 

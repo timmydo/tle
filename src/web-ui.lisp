@@ -1155,7 +1155,7 @@
               (handle-client client-socket))))))
      :name "web-server")))
 
-(defmethod run-ui ((ui web-ui) (editor editor))
+(defun run-web-ui (ui editor &optional (port 8080))
   (setf *editor-instance* editor)
   (setf *web-ui-instance* ui)
   ;; Initialize default application
@@ -1165,9 +1165,9 @@
     (setf (gethash *default-application-name* *applications*) default-app)
     ;; Create sample frames for testing
     (create-sample-frames *default-application-name*))
-  (start-server 8080)
+  (start-server port)
   (format t "~%Your TLE application is now running.~%")
-  (format t "Please open your web browser to http://localhost:8080~%")
+  (format t "Server listening on http://localhost:~A~%" port)
   (format t "Use ?app=<name> parameter to access different applications~%")
   (loop (sleep 1)))
 

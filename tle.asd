@@ -3,7 +3,7 @@
   :author "Timmy Douglas <mail@timmydouglas.com>"
   :license  "MPL2"
   :version "0.0.1"
-  :depends-on ("jsown" "usocket" "bordeaux-threads")
+  :depends-on ("jsown" "usocket" "bordeaux-threads" "webview" "cffi" "float-features")
   :pathname "src"
   :serial t
   :components (
