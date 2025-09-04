@@ -8,6 +8,15 @@ disinterest in becoming an IDE for other programming languages.
 Core prinicples are simplicity and minimizing dependencies.
 
 
+# Webview
+
+
+Build command on guix:
+```
+(cd vendor/webview && guix shell --network --container nss-certs bash git coreutils webkitgtk gcc-toolchain cmake ninja pkg-config -- sh -c "cd c/ && rm -rf build/ && cmake -G Ninja -B build -S . -D CMAKE_BUILD_TYPE=Release && cmake --build build && cd .. && cp -r c/build/lib/* lib/linux/x64/ && echo success")
+```
+
+
 # Prompts to reuse
 
 ```
