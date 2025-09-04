@@ -11,9 +11,6 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 ### Building and Running
 - **Quick start**: `./start.sh` - convenience script to start TLE
 - **Manual start**: `sbcl --no-userinit --non-interactive --eval '(sb-int:set-floating-point-modes :traps nil)' --eval "(require \"asdf\")" --eval '(asdf:load-system :tle)' --eval '(tle:main)'`
-- **REPL mode**: 
-  - Load system: `(ql:quickload :tle)` in a Lisp REPL
-  - Run application: `(tle:main)` - starts web server on http://localhost:8080
 - **Entry point**: `src/main.lisp` contains the main function
 - **Port configuration**: Set `TLE_PORT` environment variable to use a specific port (e.g., `TLE_PORT=3000 ./start.sh`). If not set, automatically finds an available port starting from 8080.
 
@@ -22,7 +19,7 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 
 ### Utilities
 - **Parenthesis checker**: `util/paren-checker.lisp` - checks for mismatched parentheses in Common Lisp source files
-  - **Usage**: `sbcl --load util/paren-checker.lisp --eval '(paren-checker:main "filename.lisp")'`
+  - **Usage**: `sbcl --no-inform --load util/paren-checker.lisp --eval '(paren-checker:main "filename.lisp")'`
   - **Programmatic usage**: `(paren-checker:check-parens "code string")` or `(paren-checker:check-parens-file "filename")`
   - **Run tests**: `cd util/tests && sbcl --load test-paren-checker.lisp`
 
@@ -30,7 +27,8 @@ TLE (Timmy's Lisp Environment) is a text editor written in Common Lisp, designed
 - **jsown**: JSON parsing library
 - **usocket**: Socket library for network communication
 - **bordeaux-threads**: Threading library for concurrent operations
-- Requires Quicklisp for dependency management
+- Uses ASDF to load dependencies from vendor/
+- Do not use quicklisp
 
 ## Architecture
 

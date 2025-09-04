@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test script for TLE (Timmy's Lisp Environment)
 
-export CL_SOURCE_REGISTRY="$(pwd)/vendor//:"
+export CL_SOURCE_REGISTRY="$(pwd)//:"
 
 echo "Starting TLE tests..."
 
@@ -38,7 +38,8 @@ for test_file in tests/test*.lisp; do
         # Extract the test function name from the file (assumes run-all-*-tests pattern)
         test_function=$(grep -o "defun run-all-[^(]*" "$test_file" | head -1 | sed 's/defun //')
         if [ -n "$test_function" ]; then
-            if sbcl --non-interactive \
+            if sbcl --noinform --no-userinit --no-sysinit --non-interactive \
+                    --eval "(require \"asdf\")" \
                     --eval "(sb-int:set-floating-point-modes :traps nil)" \
                     --eval "(asdf:load-system :tle)" \
                     --eval "(load \"$test_file\")" \
