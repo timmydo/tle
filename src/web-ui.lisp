@@ -928,6 +928,12 @@
           (when should-be-focused
             (format t "Focused frame ~A~%" frame-id)))))))
 
+(defun get-focused-frame (app-name)
+  "Get the currently focused frame in the application."
+  (let ((app (get-application app-name)))
+    (when app
+      (find-if #'frame-focused (application-frames app)))))
+
 (defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."
   (let ((key (jsown:val key-data "key"))
@@ -937,9 +943,12 @@
         (meta (jsown:val key-data "meta")))
     (format t "Key event received for app '~A'. Key: '~A', Ctrl: ~A, Alt: ~A, Meta: ~A~%" app-name key ctrl alt meta)
     
-    ;; Get the current buffer for the application
+    ;; Get the current buffer for the focused frame, fall back to application editor
     (let* ((app (get-application app-name))
-           (editor (when app (application-editor app)))
+           (focused-frame (get-focused-frame app-name))
+           (editor (if focused-frame 
+                      (frame-editor focused-frame)
+                      (when app (application-editor app))))
            (buffer (when editor (current-buffer editor))))
       
       (when editor

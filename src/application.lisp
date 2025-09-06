@@ -60,12 +60,6 @@
     (when app
       (application-frames app))))
 
-(defun set-application-editor (app-name editor)
-  "Set the editor for an application."
-  (let ((app (gethash app-name *applications*)))
-    (when app
-      (setf (application-editor app) editor))))
-
 (defun create-sample-frames (app-name)
   "Create sample frames for testing the application."
   (let ((app (get-application app-name)))
@@ -86,5 +80,4 @@
           add-frame-to-application
           remove-frame-from-application
           get-application-frames
-          set-application-editor
           get-application))
