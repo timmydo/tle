@@ -738,30 +738,12 @@
                           (t
                            (escape-html (format nil "Frame: ~A" frame)))))
          (frame-id (symbol-name (frame-id frame)))
-         (title (cond
-                  ((typep frame 'standard-frame) (frame-title frame))
-                  ((typep frame 'repl-frame) (frame-title frame))
-                  (t "Frame")))
-         (x (cond
-              ((typep frame 'standard-frame) (frame-x frame))
-              ((typep frame 'repl-frame) (frame-x frame))
-              (t 50)))
-         (y (cond
-              ((typep frame 'standard-frame) (frame-y frame))
-              ((typep frame 'repl-frame) (frame-y frame))
-              (t 50)))
-         (width (cond
-                  ((typep frame 'standard-frame) (frame-width frame))
-                  ((typep frame 'repl-frame) (frame-width frame))
-                  (t 400)))
-         (height (cond
-                   ((typep frame 'standard-frame) (frame-height frame))
-                   ((typep frame 'repl-frame) (frame-height frame))
-                   (t 300)))
-         (z-index (cond
-                    ((typep frame 'standard-frame) (frame-z-index frame))
-                    ((typep frame 'repl-frame) (frame-z-index frame))
-                    (t 1000)))
+         (title (frame-title frame))
+         (x (frame-x frame))
+         (y (frame-y frame))
+         (width (frame-width frame))
+         (height (frame-height frame))
+         (z-index (frame-z-index frame))
          (focus-class (if focused "focused" "unfocused")))
     (format nil "<div class=\"window ~A\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
   <div class=\"window-header\">

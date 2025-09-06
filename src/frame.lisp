@@ -108,6 +108,10 @@
   "Update repl-frame z-index"
   (setf (frame-z-index frame) z-index))
 
+(defmethod frame-editor ((frame repl-frame))
+  "Get the editor from a repl-frame."
+  (repl-frame-editor frame))
+
 (defmethod render-components ((frame repl-frame) (ui ui-implementation))
   "Render the components of a repl-frame - split between editor and rich-object-view."
   (let ((editor-content (if (and (slot-boundp frame '%editor) (repl-frame-editor frame))
