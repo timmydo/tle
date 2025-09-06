@@ -135,3 +135,7 @@
       (return-from run-query-replace-undo-test nil)))
   
   t)
+
+(defun run-all-query-replace-undo-bug-tests ()
+  "Run all query-replace undo bug tests"
+  (run-query-replace-undo-test))

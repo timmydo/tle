@@ -46,5 +46,6 @@
     
     (format t "Test completed without reproducing the error.~%")))
 
-;; Run the test
-(test-reproduce-line-text-error)
+(defun run-all-reproduce-line-text-error-tests ()
+  "Run all line text error reproduction tests"
+  (test-reproduce-line-text-error))
