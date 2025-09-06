@@ -78,3 +78,49 @@
       (render (frame-editor frame) ui)
       "No editor available"))
 
+(defclass repl-frame (frame)
+  ((%editor :accessor repl-frame-editor :initarg :editor)
+   (%rich-object-view :accessor repl-frame-rich-object-view :initarg :rich-object-view))
+  (:documentation "A frame containing both an editor and a rich-object-view for REPL functionality."))
+
+(defun make-repl-frame (editor rich-object-view &key (title "REPL") (x 100) (y 100) (width 600) (height 400))
+  "Create a new repl-frame with an editor and rich-object-view."
+  (make-instance 'repl-frame 
+                 :title title 
+                 :x x 
+                 :y y 
+                 :width width 
+                 :height height 
+                 :editor editor
+                 :rich-object-view rich-object-view))
+
+(defmethod update-frame-position ((frame repl-frame) x y)
+  "Update repl-frame position"
+  (setf (frame-x frame) x)
+  (setf (frame-y frame) y))
+
+(defmethod update-frame-size ((frame repl-frame) width height)
+  "Update repl-frame size"
+  (setf (frame-width frame) width)
+  (setf (frame-height frame) height))
+
+(defmethod update-frame-z-index-value ((frame repl-frame) z-index)
+  "Update repl-frame z-index"
+  (setf (frame-z-index frame) z-index))
+
+(defmethod render-components ((frame repl-frame) (ui ui-implementation))
+  "Render the components of a repl-frame - split between editor and rich-object-view."
+  (let ((editor-content (if (and (slot-boundp frame '%editor) (repl-frame-editor frame))
+                            (render (repl-frame-editor frame) ui)
+                            "No editor available"))
+        (object-view-content (if (and (slot-boundp frame '%rich-object-view) (repl-frame-rich-object-view frame))
+                                 (render (repl-frame-rich-object-view frame) ui)
+                                 "No object view available")))
+    (format nil 
+            "<div class=\"repl-frame-container\">
+               <div class=\"repl-editor-section\">~A</div>
+               <div class=\"repl-object-section\">~A</div>
+             </div>"
+            editor-content
+            object-view-content)))
+

@@ -208,6 +208,51 @@
             display: flex;
             flex-direction: column;
         }
+        .repl-frame-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .repl-editor-section {
+            flex: 0 0 60%;
+            border-bottom: 2px solid #5c6370;
+        }
+        .repl-object-section {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .rich-object-view {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .rich-object-view-header {
+            background-color: #3e4451;
+            color: #e5c07b;
+            padding: 5px 10px;
+            font-weight: bold;
+            border-bottom: 1px solid #5c6370;
+        }
+        .rich-object-view-content {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        .object-item {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid #61afef;
+            background-color: #353842;
+        }
+        .string-object {
+            border-left-color: #98c379;
+        }
+        .number-object {
+            border-left-color: #d19a66;
+        }
+        .list-object {
+            border-left-color: #c678dd;
+        }
         .editor-content {
             flex: 1;
             overflow: auto;
@@ -251,6 +296,7 @@
             File
             <div class=\"menu-dropdown\" id=\"file-dropdown\">
                 <div class=\"menu-option\" onclick=\"createNewWindow()\">New Window</div>
+                <div class=\"menu-option\" onclick=\"createNewREPL()\">New REPL</div>
             </div>
         </div>
         <div class=\"menu-item\" id=\"system-menu\">
@@ -548,6 +594,15 @@
             hideAllMenus();
         }
         
+        function createNewREPL() {
+            fetch('/repl-new', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            });
+            hideAllMenus();
+        }
+        
         function quitApplication() {
             if (confirm('Are you sure you want to quit TLE?')) {
                 fetch('/quit', {
@@ -675,16 +730,38 @@
 
 (defun render-frame-with-focus (frame ui focused)
   "Render a frame as an HTML window with focus information."
-  (let* ((frame-content (if (typep frame 'standard-frame)
-                           (render-components frame ui)
-                           (escape-html (format nil "Frame: ~A" frame))))
+  (let* ((frame-content (cond
+                          ((typep frame 'standard-frame)
+                           (render-components frame ui))
+                          ((typep frame 'repl-frame)
+                           (render-components frame ui))
+                          (t
+                           (escape-html (format nil "Frame: ~A" frame)))))
          (frame-id (symbol-name (frame-id frame)))
-         (title (if (typep frame 'standard-frame) (frame-title frame) "Frame"))
-         (x (if (typep frame 'standard-frame) (frame-x frame) 50))
-         (y (if (typep frame 'standard-frame) (frame-y frame) 50))
-         (width (if (typep frame 'standard-frame) (frame-width frame) 400))
-         (height (if (typep frame 'standard-frame) (frame-height frame) 300))
-         (z-index (if (typep frame 'standard-frame) (frame-z-index frame) 1000))
+         (title (cond
+                  ((typep frame 'standard-frame) (frame-title frame))
+                  ((typep frame 'repl-frame) (frame-title frame))
+                  (t "Frame")))
+         (x (cond
+              ((typep frame 'standard-frame) (frame-x frame))
+              ((typep frame 'repl-frame) (frame-x frame))
+              (t 50)))
+         (y (cond
+              ((typep frame 'standard-frame) (frame-y frame))
+              ((typep frame 'repl-frame) (frame-y frame))
+              (t 50)))
+         (width (cond
+                  ((typep frame 'standard-frame) (frame-width frame))
+                  ((typep frame 'repl-frame) (frame-width frame))
+                  (t 400)))
+         (height (cond
+                   ((typep frame 'standard-frame) (frame-height frame))
+                   ((typep frame 'repl-frame) (frame-height frame))
+                   (t 300)))
+         (z-index (cond
+                    ((typep frame 'standard-frame) (frame-z-index frame))
+                    ((typep frame 'repl-frame) (frame-z-index frame))
+                    (t 1000)))
          (focus-class (if focused "focused" "unfocused")))
     (format nil "<div class=\"window ~A\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
   <div class=\"window-header\">
@@ -845,6 +922,9 @@
                     ((and (string= method "POST") (string= path "/frame-new"))
                      (handle-frame-new-post client-stream body app-name)
                      :close)
+                    ((and (string= method "POST") (string= path "/repl-new"))
+                     (handle-repl-new-post client-stream body app-name)
+                     :close)
                     ((and (string= method "POST") (string= path "/frame-zindex"))
                      (handle-frame-zindex-post client-stream body app-name)
                      :close)
@@ -961,6 +1041,13 @@
   "Handle new frame creation request."
   (declare (ignore body))
   (create-new-frame-in-application app-name)
+  (broadcast-update app-name)
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
+
+(defun handle-repl-new-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle new REPL frame creation request."
+  (declare (ignore body))
+  (create-new-repl-frame-in-application app-name)
   (broadcast-update app-name)
   (send-http-response client-stream "HTTP/1.1 200 OK"))
 
@@ -1163,6 +1250,39 @@
         (setf (application-active-frame app) new-frame)
         (push new-frame (application-frames app))
         (format t "Created new frame ~A in app ~A with z-index ~A. Total frames: ~A~%" 
+                frame-id app-name new-z-index (length (application-frames app)))))))
+
+(defun create-new-repl-frame-in-application (app-name)
+  "Create a new REPL frame in the application."
+  (let ((app (get-application app-name)))
+    (when app
+      (let* ((frame-id (gensym "REPL"))
+             (title (format nil "REPL ~A" (length (application-frames app))))
+             ;; Position new frames with slight offset
+             (x (+ 150 (* 20 (length (application-frames app)))))
+             (y (+ 150 (* 20 (length (application-frames app)))))
+             ;; Find highest z-index among existing frames and add 1
+             (highest-z-index (if (application-frames app)
+                                 (reduce #'max (application-frames app) 
+                                        :key #'frame-z-index)
+                                 1000))
+             (new-z-index (1+ highest-z-index))
+             (new-editor (make-standard-editor))
+             (rich-object-view (make-instance 'rich-object-view :title "Results"))
+             (new-frame (make-instance 'repl-frame
+                                       :id frame-id
+                                       :title title
+                                       :editor new-editor
+                                       :rich-object-view rich-object-view
+                                       :x x
+                                       :y y
+                                       :width 600
+                                       :height 500
+                                       :z-index new-z-index)))
+        ;; Set the new frame as the active frame (unfocusing any previous active frame)
+        (setf (application-active-frame app) new-frame)
+        (push new-frame (application-frames app))
+        (format t "Created new REPL frame ~A in app ~A with z-index ~A. Total frames: ~A~%" 
                 frame-id app-name new-z-index (length (application-frames app)))))))
 
 (defun update-frame-z-index (app-name frame-id z-index)

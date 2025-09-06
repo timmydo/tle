@@ -16,6 +16,7 @@
                (:file "editor") ;; total editor state. list of buffers and windows.
                (:file "frame") ;; a frame displayed by the ui
                (:file "view") ;; a buffer with scroll position, point/mark
+               (:file "rich-object-view") ;; a view for displaying objects as HTML
                (:file "application") ;; application with frames and editor
 	       ;; implementation
 	       (:file "web-ui")
