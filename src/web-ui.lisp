@@ -269,6 +269,9 @@
         let draggedWindow = null;
         let dragOffset = {x: 0, y: 0};
         let resizedWindow = null;
+        let textSelectionActive = false;
+        let selectionStartLine = null;
+        let selectionStartCol = null;
         
         function makeWindowDraggable(windowElement) {
             const header = windowElement.querySelector('.window-header');
@@ -285,11 +288,11 @@
                 setWindowFocus(windowElement);
             });
             
-            // Handle clicks in editor content area
+            // Handle clicks and text selection in editor content area
             const editorContent = windowElement.querySelector('.editor-content');
             if (editorContent) {
-                editorContent.addEventListener('click', (e) => {
-                    // Only handle clicks that aren't being handled by dragging/resizing
+                editorContent.addEventListener('mousedown', (e) => {
+                    // Only handle mouse events that aren't being handled by dragging/resizing
                     if (draggedWindow || resizedWindow) return;
                     
                     // Look for click data attributes in the clicked element or its parents
@@ -307,11 +310,64 @@
                         clickTarget = clickTarget.parentElement;
                     }
                     
-                    // Only send click if we found position data
+                    // Only proceed if we found position data
                     if (line !== null && col !== null) {
                         const frameId = windowElement.dataset.frameId;
+                        
+                        // Start text selection
+                        textSelectionActive = true;
+                        selectionStartLine = line;
+                        selectionStartCol = col;
+                        
+                        // Position cursor at click location
                         sendClick(frameId, line, col);
+                        
+                        e.preventDefault();
+                        e.stopPropagation();
                     }
+                });
+                
+                editorContent.addEventListener('mousemove', (e) => {
+                    if (!textSelectionActive || draggedWindow || resizedWindow) return;
+                    
+                    // Look for position data at current mouse position
+                    let clickTarget = e.target;
+                    let line = null;
+                    let col = null;
+                    
+                    while (clickTarget && clickTarget !== editorContent) {
+                        if (clickTarget.hasAttribute && clickTarget.hasAttribute('data-click-line')) {
+                            line = parseInt(clickTarget.getAttribute('data-click-line'));
+                            col = parseInt(clickTarget.getAttribute('data-click-col'));
+                            break;
+                        }
+                        clickTarget = clickTarget.parentElement;
+                    }
+                    
+                    if (line !== null && col !== null) {
+                        const frameId = windowElement.dataset.frameId;
+                        
+                        // Send selection update
+                        sendSelection(frameId, selectionStartLine, selectionStartCol, line, col);
+                        
+                        e.preventDefault();
+                    }
+                });
+                
+                editorContent.addEventListener('mouseup', (e) => {
+                    if (textSelectionActive) {
+                        textSelectionActive = false;
+                        selectionStartLine = null;
+                        selectionStartCol = null;
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                });
+                
+                // Legacy click handler for compatibility
+                editorContent.addEventListener('click', (e) => {
+                    // Only handle clicks that aren't being handled by dragging/resizing or selection
+                    if (draggedWindow || resizedWindow || textSelectionActive) return;
                     
                     e.stopPropagation();
                 });
@@ -441,6 +497,20 @@
             });
         }
         
+        function sendSelection(frameId, startLine, startCol, endLine, endCol) {
+            fetch('/selection', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    frameId: frameId,
+                    startLine: startLine,
+                    startCol: startCol,
+                    endLine: endLine,
+                    endCol: endCol
+                })
+            });
+        }
+        
         function sendFrameUpdate(frameId, position) {
             fetch('/frame-update', {
                 method: 'POST',
@@ -551,6 +621,15 @@
                 meta: e.metaKey 
             };
             sendKey(keyInfo);
+        });
+        
+        // Global mouseup handler to end text selection anywhere
+        document.addEventListener('mouseup', (e) => {
+            if (textSelectionActive) {
+                textSelectionActive = false;
+                selectionStartLine = null;
+                selectionStartCol = null;
+            }
         });
         
         connectEventSource();
@@ -778,6 +857,9 @@
                     ((and (string= method "POST") (string= path "/click"))
                      (handle-click-post client-stream body app-name)
                      :close)
+                    ((and (string= method "POST") (string= path "/selection"))
+                     (handle-selection-post client-stream body app-name)
+                     :close)
                     (t
                      (send-404-response client-stream)
                      :close)))))
@@ -923,6 +1005,18 @@
       (handle-mouse-click app-name frame-id line col)))
   (send-http-response client-stream "HTTP/1.1 200 OK"))
 
+(defun handle-selection-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle mouse selection request to set mark and position."
+  (when body
+    (let* ((data (jsown:parse body))
+           (frame-id (jsown:val data "frameId"))
+           (start-line (jsown:val data "startLine"))
+           (start-col (jsown:val data "startCol"))
+           (end-line (jsown:val data "endLine"))
+           (end-col (jsown:val data "endCol")))
+      (handle-mouse-selection app-name frame-id start-line start-col end-line end-col)))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
+
 (defun handle-mouse-click (app-name frame-id line-number column)
   "Handle a mouse click by positioning the cursor."
   (let* ((app (get-application app-name))
@@ -940,9 +1034,40 @@
         ;; Clamp column to line length
         (let ((line-text (buffer-line buffer line-number)))
           (setf column (max 0 (min column (length line-text))))
-          ;; Set the cursor position
+          ;; Set the cursor position and clear any existing mark
           (buffer-set-point buffer line-number column)
+          (buffer-clear-mark buffer)
           (format t "Click positioned cursor at line ~A, column ~A~%" line-number column)))))
+  ;; Broadcast update to refresh the display
+  (broadcast-update app-name))
+
+(defun handle-mouse-selection (app-name frame-id start-line start-col end-line end-col)
+  "Handle mouse selection by setting mark and point."
+  (let* ((app (get-application app-name))
+         (frame (when app
+                  (find-if (lambda (f)
+                            (string= (symbol-name (frame-id f)) frame-id))
+                          (application-frames app))))
+         (editor (when frame (frame-editor frame)))
+         (buffer (when editor (current-buffer editor))))
+    (when buffer
+      (let ((max-lines (buffer-line-count buffer)))
+        ;; Clamp line numbers to valid ranges
+        (setf start-line (max 0 (min start-line (1- max-lines))))
+        (setf end-line (max 0 (min end-line (1- max-lines))))
+        
+        ;; Clamp columns to line lengths
+        (let ((start-line-text (buffer-line buffer start-line))
+              (end-line-text (buffer-line buffer end-line)))
+          (setf start-col (max 0 (min start-col (length start-line-text))))
+          (setf end-col (max 0 (min end-col (length end-line-text))))
+          
+          ;; Set mark at start position and point at end position
+          (buffer-set-mark buffer start-line start-col)
+          (buffer-set-point buffer end-line end-col)
+          
+          (format t "Selection: mark at line ~A, column ~A; point at line ~A, column ~A~%" 
+                  start-line start-col end-line end-col)))))
   ;; Broadcast update to refresh the display
   (broadcast-update app-name))
 
