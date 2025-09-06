@@ -1474,6 +1474,11 @@
                                       (save-buffer-as buffer (string-trim " " file-path))))))
            (format t "Ctrl-Alt-W: Save buffer as (C-x C-w equivalent)~%"))
           
+          ;; Ctrl+Enter for REPL evaluation (only in REPL editors)
+          ((and ctrl (string= key "Enter") (typep editor 'repl-editor))
+           (evaluate-repl-buffer editor)
+           (format t "Ctrl+Enter: Evaluated REPL buffer~%"))
+          
           ;; Enter key for newline insertion
           ((string= key "Enter")
            (insert-newline buffer)

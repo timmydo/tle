@@ -113,7 +113,7 @@
   (repl-frame-editor frame))
 
 (defmethod render-components ((frame repl-frame) (ui ui-implementation))
-  "Render the components of a repl-frame - split between editor and rich-object-view."
+  "Render the components of a repl-frame - rich-object-view before editor."
   (let ((editor-content (if (and (slot-boundp frame '%editor) (repl-frame-editor frame))
                             (render (repl-frame-editor frame) ui)
                             "No editor available"))
@@ -122,9 +122,9 @@
                                  "No object view available")))
     (format nil 
             "<div class=\"repl-frame-container\">
-               <div class=\"repl-editor-section\">~A</div>
                <div class=\"repl-object-section\">~A</div>
+               <div class=\"repl-editor-section\">~A</div>
              </div>"
-            editor-content
-            object-view-content)))
+            object-view-content
+            editor-content)))
 

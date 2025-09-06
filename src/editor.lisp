@@ -98,6 +98,37 @@
             (render-modeline modeline-info)
             (render-minibuffer editor ui))))
 
+(defclass repl-editor (standard-editor)
+  ()
+  (:documentation "A specialized editor for REPL use without modeline or minibuffer display."))
+
+(defun make-repl-editor ()
+  "Create a REPL editor."
+  (let ((e (make-instance 'repl-editor)))
+    (setf (buffers e) (list (make-standard-buffer "*repl*")))
+    e))
+
+(defmethod render ((editor repl-editor) (ui ui-implementation))
+  "Render a REPL editor component without modeline and minibuffer."
+  (let ((current-buf (current-buffer editor)))
+    (format nil "<div class=\"editor-pane\">~A</div>"
+            (if current-buf
+                (format nil "<div class=\"editor-content\">~A</div>"
+                        (render current-buf ui))
+                "<div class=\"editor-content\">No buffer available</div>"))))
+
+(defun evaluate-repl-buffer (editor)
+  "Evaluate the contents of the REPL buffer and print to terminal."
+  (let ((buffer (current-buffer editor)))
+    (when buffer
+      (let ((content (get-buffer-text buffer)))
+        (format t "=== REPL Evaluation ===~%")
+        (format t "Input:~%~A~%" content)
+        (format t "=== End Evaluation ===~%")
+        ;; TODO: Add actual Lisp evaluation here
+        ;; For now, just echo the content
+        content))))
+
 (defun render-modeline (modeline-info)
   "Render the modeline showing filename, line, and column."
   (format nil "<div class=\"modeline\">~A~A Line:~D Col:~D</div>"
