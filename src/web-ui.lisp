@@ -871,9 +871,7 @@
   "Create a new frame in the application."
   (let ((app (get-application app-name)))
     (when app
-      (let* ((editor (application-editor app))
-             (buffer (when editor (current-buffer editor)))
-             (frame-id (gensym "FRAME"))
+      (let* ((frame-id (gensym "FRAME"))
              (title (format nil "Buffer ~A" (length (application-frames app))))
              ;; Position new frames with slight offset
              (x (+ 100 (* 20 (length (application-frames app)))))
@@ -884,16 +882,24 @@
                                         :key #'frame-z-index)
                                  1000))
              (new-z-index (1+ highest-z-index))
+             (new-editor (make-standard-editor))
              (new-frame (make-instance 'standard-frame
                                        :id frame-id
                                        :title title
-                                       :buffer (or buffer (make-instance 'buffer))
+                                       :editor new-editor
                                        :x x
                                        :y y
                                        :width 400
                                        :height 300
                                        :z-index new-z-index
-                                       :focused t)))
+                                       :focused t))
+             (view (make-instance 'standard-view)))
+        ;; Set up the view for the frame
+        (setf (view-point view) (cons 0 0))
+        (setf (view-mark view) nil)
+        (when (and new-editor (current-buffer new-editor))
+          (setf (view-buffer view) (current-buffer new-editor)))
+        (setf (frame-views new-frame) (list view))
         ;; Unfocus all existing frames before adding the new focused frame
         (dolist (frame (application-frames app))
           (update-frame-focus frame nil))

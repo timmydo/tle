@@ -71,9 +71,8 @@
   (let ((app (get-application app-name)))
     (when app
       (let* ((editor (application-editor app))
-             (frame1 (make-standard-frame editor :title "Main Buffer" :x 50 :y 50 :width 500 :height 400))
-             (frame2 (make-standard-frame editor :title "Secondary View" :x 600 :y 100 :width 400 :height 300)))
-        (setf (application-frames app) (list frame1 frame2))
+             (frame1 (make-standard-frame editor :title "Main Buffer" :x 50 :y 50 :width 500 :height 400)))
+        (setf (application-frames app) (list frame1))
         app))))
 
 ;; Export key functions for external use
