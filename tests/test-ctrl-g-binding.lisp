@@ -6,7 +6,7 @@
   
   ;; Test 1: Simulate Ctrl+G key input and verify mark is cleared
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     
     ;; Set mark
@@ -31,7 +31,7 @@
   
   ;; Test 2: Verify Ctrl+G doesn't interfere with other operations
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     
     ;; Insert character, set mark, press Ctrl+G, then verify we can still insert
@@ -56,7 +56,7 @@
   
   ;; Test 3: Test that other Ctrl key combinations still work after Ctrl+G
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)
     
     ;; Set mark and clear it with Ctrl+G
@@ -86,7 +86,7 @@
   
   ;; Test 1: Verify the keyboard-quit function exists and is accessible
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     
     ;; This should not error if keyboard-quit is properly defined
     (let ((result (keyboard-quit buf)))
@@ -98,7 +98,7 @@
         (ctrl t)
         (buf (make-instance 'standard-buffer)))
     
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)
     (buffer-set-mark buf 0 1)
     
@@ -114,7 +114,7 @@
   
   ;; Test 3: Test case sensitivity (should only work with lowercase 'g')
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-mark buf 0 1)
     
     ;; Test with uppercase 'G' - should not trigger

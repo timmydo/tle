@@ -8,7 +8,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer with test content
-    (setf (lines buffer) #("hello world test" "second line"))
+    (setf (lines buffer) (vector "hello world test" "second line"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     
@@ -58,7 +58,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer with test content
-    (setf (lines buffer) #("hello world test"))
+    (setf (lines buffer) (vector "hello world test"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     
@@ -84,7 +84,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer
-    (setf (lines buffer) #("hello world test"))
+    (setf (lines buffer) (vector "hello world test"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     
@@ -113,7 +113,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer
-    (setf (lines buffer) #("hello world test"))
+    (setf (lines buffer) (vector "hello world test"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     
@@ -150,7 +150,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer
-    (setf (lines buffer) #("hello world test"))
+    (setf (lines buffer) (vector "hello world test"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     
@@ -167,7 +167,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer
-    (setf (lines buffer) #("hello world test"))
+    (setf (lines buffer) (vector "hello world test"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     

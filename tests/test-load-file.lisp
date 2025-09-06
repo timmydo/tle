@@ -142,7 +142,7 @@ third line here" stream))
         (test-file "/tmp/test-load-file-overwrite.txt"))
     
     ;; Setup buffer with existing content
-    (setf (lines buf) #("old line 1" "old line 2" "old line 3"))
+    (setf (lines buf) (vector "old line 1" "old line 2" "old line 3"))
     (setf (buffer-file-path buf) "/old/path/file.txt")
     (buffer-set-point buf 1 5)
     (buffer-set-mark buf 2 3)
@@ -199,7 +199,7 @@ new content line 2" stream))
 command test line 2" stream))
     
     ;; Setup editor with buffer
-    (setf (lines buffer) #("old content"))
+    (setf (lines buffer) (vector "old content"))
     (setf (buffers editor) (list buffer))
     
     ;; Test load-file-command

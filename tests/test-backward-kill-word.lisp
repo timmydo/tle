@@ -6,7 +6,7 @@
   
   ;; Test 1: Kill word from end of word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 5)  ; At end of "hello"
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) " world test") ()
@@ -17,7 +17,7 @@
   
   ;; Test 2: Kill word from middle of word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 3)  ; At 'l' in "hello"
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) "lo world test") ()
@@ -28,7 +28,7 @@
   
   ;; Test 3: Kill word from middle, should kill from beginning of word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello   world"))
+    (setf (lines buf) (vector "hello   world"))
     (buffer-set-point buf 0 10)  ; At 'r' in "world"
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) "hello   rld") ()
@@ -39,7 +39,7 @@
   
   ;; Test 4: Kill from beginning of line (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)  ; At beginning of line
     (let ((original-line (buffer-line buf 0)))
       (backward-kill-word buf)
@@ -49,7 +49,7 @@
   
   ;; Test 5: Kill word with underscores (part of word)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("my_variable other"))
+    (setf (lines buf) (vector "my_variable other"))
     (buffer-set-point buf 0 11)  ; At end of "my_variable"
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) " other") ()
@@ -64,7 +64,7 @@
   
   ;; Test 1: Kill at beginning of line (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world test"))
+    (setf (lines buf) (vector "hello" "world test"))
     (buffer-set-point buf 1 0)  ; At beginning of "world"
     (let ((original-line-count (buffer-line-count buf))
           (original-line-0 (buffer-line buf 0))
@@ -80,7 +80,7 @@
   
   ;; Test 2: Kill from beginning of word after spaces
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("   hello world"))
+    (setf (lines buf) (vector "   hello world"))
     (buffer-set-point buf 0 3)  ; At 'h' in "hello"
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) "hello world") ()
@@ -91,7 +91,7 @@
   
   ;; Test 3: Kill word that starts at beginning of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)  ; At end of "hello"
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) " world") ()
@@ -108,7 +108,7 @@
   
   ;; Test 1: Single character word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a b c"))
+    (setf (lines buf) (vector "a b c"))
     (buffer-set-point buf 0 1)  ; After 'a'
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) " b c") ()
@@ -117,7 +117,7 @@
   
   ;; Test 2: Only spaces and symbols (no word characters)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  !@#  $%^"))
+    (setf (lines buf) (vector "  !@#  $%^"))
     (buffer-set-point buf 0 10)  ; At end of line
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) "") ()
@@ -126,7 +126,7 @@
   
   ;; Test 3: Empty line (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("word" ""))
+    (setf (lines buf) (vector "word" ""))
     (buffer-set-point buf 1 0)  ; At empty line
     (let ((original-line-count (buffer-line-count buf)))
       (backward-kill-word buf)
@@ -140,7 +140,7 @@
   
   ;; Test 4: Only one line with one word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)  ; At end of "hello"
     (backward-kill-word buf)
     (assert (string= (buffer-line buf 0) "") ()
@@ -149,7 +149,7 @@
   
   ;; Test 5: Multiple consecutive kills
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("one two three four"))
+    (setf (lines buf) (vector "one two three four"))
     (buffer-set-point buf 0 18)  ; At end of line
     (backward-kill-word buf)  ; Kill "four"
     (assert (string= (buffer-line buf 0) "one two three ") ())
@@ -167,7 +167,7 @@
   
   ;; Test 1: Mark should be cleared after backward-kill-word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 11)  ; At end of line
     (buffer-set-mark buf 0 3)
     (assert (buffer-get-mark buf) () "Test 1 setup failed: mark should be set")
@@ -177,7 +177,7 @@
   
   ;; Test 2: Mark cleared even when kill does nothing
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 0)  ; At beginning of line
     (buffer-set-mark buf 0 2)
     (assert (buffer-get-mark buf) () "Test 2 setup failed: mark should be set")
@@ -193,7 +193,7 @@
   
   ;; Test 1: Basic undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 11)  ; At end of line
     (let ((original-line (buffer-line buf 0))
           (original-point (copy-list (buffer-get-point buf))))
@@ -214,7 +214,7 @@
   
   ;; Test 2: Undo/redo at beginning of line (no change expected)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world test"))
+    (setf (lines buf) (vector "hello" "world test"))
     (buffer-set-point buf 1 0)  ; At beginning of "world"
     (let ((original-lines (loop for i from 0 below (buffer-line-count buf)
                                 collect (buffer-line buf i)))
@@ -242,7 +242,7 @@
   
   ;; Test: Double undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("one two three"))
+    (setf (lines buf) (vector "one two three"))
     (buffer-set-point buf 0 13)  ; At end of line
     (let ((original-line (buffer-line buf 0))
           (original-point (copy-list (buffer-get-point buf))))

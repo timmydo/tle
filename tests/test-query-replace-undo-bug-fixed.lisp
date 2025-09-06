@@ -8,7 +8,7 @@
   (format t "  Testing batch query-replace undo...~%")
   (let ((buf (make-instance 'standard-buffer)))
     ;; Setup: Create buffer with some replaceable text
-    (setf (lines buf) #("hello world test" "hello again test"))
+    (setf (lines buf) (vector "hello world test" "hello again test"))
     (buffer-set-point buf 0 0)
     
     ;; Store original content for comparison
@@ -56,7 +56,7 @@
   (let ((editor (make-standard-editor))
         (buf (make-standard-buffer "*test*")))
     ;; Setup: Create buffer with replaceable text  
-    (setf (lines buf) #("hello world hello"))
+    (setf (lines buf) (vector "hello world hello"))
     (buffer-set-point buf 0 0)
     (setf (buffers editor) (list buf))
     

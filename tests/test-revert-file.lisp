@@ -17,7 +17,7 @@ original content line 3" stream))
     (load-file buf test-file)
     
     ;; Modify buffer content to simulate changes
-    (setf (lines buf) #("modified line 1" "modified line 2" "new line 3" "extra line"))
+    (setf (lines buf) (vector "modified line 1" "modified line 2" "new line 3" "extra line"))
     (buffer-set-point buf 2 10)
     (buffer-set-mark buf 1 5)
     (mark-buffer-dirty buf)  ; Mark buffer as dirty
@@ -64,7 +64,7 @@ original content line 3" stream))
   (let ((buf (make-instance 'standard-buffer)))
     
     ;; Setup buffer without file path
-    (setf (lines buf) #("some content" "more content"))
+    (setf (lines buf) (vector "some content" "more content"))
     (setf (buffer-file-path buf) nil)  ; No file path
     
     ;; Test reverting buffer with no file path should fail
@@ -98,7 +98,7 @@ original content line 3" stream))
     (delete-file test-file)
     
     ;; Modify buffer content
-    (setf (lines buf) #("modified content"))
+    (setf (lines buf) (vector "modified content"))
     
     ;; Test reverting when file no longer exists should fail
     (let ((result (revert-buffer buf)))
@@ -128,7 +128,7 @@ original content line 3" stream))
     (load-file buf test-file)
     
     ;; Add some content to buffer
-    (setf (lines buf) #("added line 1" "added line 2"))
+    (setf (lines buf) (vector "added line 1" "added line 2"))
     (mark-buffer-dirty buf)
     
     ;; Test reverting to empty file
@@ -171,7 +171,7 @@ second line original" stream))
     (setf (buffers editor) (list buffer))
     
     ;; Modify buffer
-    (setf (lines buffer) #("modified content"))
+    (setf (lines buffer) (vector "modified content"))
     (mark-buffer-dirty buffer)
     
     ;; Test revert-file-command

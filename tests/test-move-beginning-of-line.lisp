@@ -6,7 +6,7 @@
   
   ;; Test 1: From middle of line to first non-whitespace
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  hello world"))
+    (setf (lines buf) (vector "  hello world"))
     (buffer-set-point buf 0 8)  ; Position at 'o' in "hello"
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -15,7 +15,7 @@
   
   ;; Test 2: From first non-whitespace to beginning
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  hello world"))
+    (setf (lines buf) (vector "  hello world"))
     (buffer-set-point buf 0 2)  ; Position at first non-whitespace
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -24,7 +24,7 @@
   
   ;; Test 3: From beginning to first non-whitespace
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  hello world"))
+    (setf (lines buf) (vector "  hello world"))
     (buffer-set-point buf 0 0)  ; Position at beginning
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -33,7 +33,7 @@
   
   ;; Test 4: Line without leading whitespace
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)  ; Position at space
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -57,7 +57,7 @@
   
   ;; Test 2: Only whitespace line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("    "))
+    (setf (lines buf) (vector "    "))
     (buffer-set-point buf 0 2)
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -66,7 +66,7 @@
   
   ;; Test 3: Single space at beginning
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #(" hello"))
+    (setf (lines buf) (vector " hello"))
     (buffer-set-point buf 0 3)
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -94,7 +94,7 @@
   
   ;; Test 1: Different lines with different indentation
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  first line" "    second line" "third line"))
+    (setf (lines buf) (vector "  first line" "    second line" "third line"))
     ;; Test first line
     (buffer-set-point buf 0 8)
     (move-beginning-of-line buf)
@@ -120,7 +120,7 @@
   
   ;; Test 1: Empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #(""))
+    (setf (lines buf) (vector ""))
     (buffer-set-point buf 0 0)
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -129,7 +129,7 @@
   
   ;; Test 2: Single character line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a"))
+    (setf (lines buf) (vector "a"))
     (buffer-set-point buf 0 1)
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -138,7 +138,7 @@
   
   ;; Test 3: Line starting with single non-whitespace
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a   "))
+    (setf (lines buf) (vector "a   "))
     (buffer-set-point buf 0 2)
     (move-beginning-of-line buf)
     (let ((point (buffer-get-point buf)))
@@ -147,7 +147,7 @@
   
   ;; Test 4: Empty buffer (should not crash)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (progn
@@ -174,7 +174,7 @@
   
   ;; Test 1: Movement operations don't interfere with existing undo stack
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  hello world"))
+    (setf (lines buf) (vector "  hello world"))
     (buffer-set-point buf 0 8)
     ;; Insert a character to create an undo record
     (insert-char buf #\X)
@@ -196,7 +196,7 @@
   
   ;; Test 2: Undo twice in a row
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  test line"))
+    (setf (lines buf) (vector "  test line"))
     (buffer-set-point buf 0 5)
     (move-beginning-of-line buf)
     ;; Try undo (should do nothing since movement doesn't create undo records)
@@ -219,7 +219,7 @@
   
   ;; Test 1: Toggle behavior test
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("    hello world"))
+    (setf (lines buf) (vector "    hello world"))
     (buffer-set-point buf 0 8)  ; Middle of line
     ;; First call: should go to first non-whitespace
     (move-beginning-of-line buf)
@@ -237,7 +237,7 @@
   
   ;; Test 2: Integration with other movement functions
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("    hello world"))
+    (setf (lines buf) (vector "    hello world"))
     (buffer-set-point buf 0 8)
     (forward-char buf)
     (move-beginning-of-line buf)
@@ -247,7 +247,7 @@
   
   ;; Test 3: Comparison with beginning-of-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("    hello world"))
+    (setf (lines buf) (vector "    hello world"))
     (buffer-set-point buf 0 8)
     ;; Use beginning-of-line
     (beginning-of-line buf)

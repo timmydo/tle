@@ -6,7 +6,7 @@
   
   ;; Test 1: yank-pop with no previous yank should do nothing
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)
     ;; Add some entries to kill ring
     (add-to-kill-ring buf "first")
@@ -23,7 +23,7 @@
   
   ;; Test 2: yank-pop with only one entry in kill ring should do nothing
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)
     ;; Add single entry to kill ring
     (add-to-kill-ring buf "single")
@@ -39,7 +39,7 @@
   
   ;; Test 3: Basic yank-pop cycling through kill ring
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test "))
+    (setf (lines buf) (vector "test "))
     (buffer-set-point buf 0 5)  ; At end
     ;; Build kill ring in order: "first", "second", "third" (most recent)
     (add-to-kill-ring buf "first")
@@ -71,7 +71,7 @@
   
   ;; Test 1: yank-pop replacing single-line with multi-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("start end"))
+    (setf (lines buf) (vector "start end"))
     (buffer-set-point buf 0 6)  ; After "start "
     ;; Add multi-line and single-line to kill ring
     (add-to-kill-ring buf "single")
@@ -94,7 +94,7 @@
   
   ;; Test 2: yank-pop replacing single-line with multi-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("prefix suffix"))
+    (setf (lines buf) (vector "prefix suffix"))
     (buffer-set-point buf 0 7)  ; After "prefix "
     ;; Add single-line and multi-line to kill ring
     (add-to-kill-ring buf (concatenate 'string "multi1" (string #\Newline) "multi2"))
@@ -121,7 +121,7 @@
   
   ;; Test 1: Basic yank-pop undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test "))
+    (setf (lines buf) (vector "test "))
     (buffer-set-point buf 0 5)
     ;; Build kill ring
     (add-to-kill-ring buf "first")
@@ -145,7 +145,7 @@
   
   ;; Test 2: Multiple yank-pop operations undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("base "))
+    (setf (lines buf) (vector "base "))
     (buffer-set-point buf 0 5)
     ;; Build kill ring with 3 entries
     (add-to-kill-ring buf "entry1")
@@ -185,7 +185,7 @@
   
   ;; Test: yank-pop called twice in succession should work correctly
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("start "))
+    (setf (lines buf) (vector "start "))
     (buffer-set-point buf 0 6)
     ;; Build kill ring with 4 entries to test wrapping
     (add-to-kill-ring buf "alpha")
@@ -223,7 +223,7 @@
   
   ;; Test 1: yank-pop at beginning of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 0)  ; At beginning
     (add-to-kill-ring buf "first")
     (add-to-kill-ring buf "second")
@@ -237,7 +237,7 @@
   
   ;; Test 2: yank-pop at end of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("prefix"))
+    (setf (lines buf) (vector "prefix"))
     (buffer-set-point buf 0 6)  ; At end
     (add-to-kill-ring buf "one")
     (add-to-kill-ring buf "two")
@@ -251,7 +251,7 @@
   
   ;; Test 3: yank-pop cycling through same entries multiple times
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test "))
+    (setf (lines buf) (vector "test "))
     (buffer-set-point buf 0 5)
     (add-to-kill-ring buf "A")
     (add-to-kill-ring buf "B")
@@ -281,7 +281,7 @@
   
   ;; Test: yank-pop after new kill operations should reset state
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("original text to test"))
+    (setf (lines buf) (vector "original text to test"))
     (buffer-set-point buf 0 9)  ; After "original "
     
     ;; Build initial kill ring

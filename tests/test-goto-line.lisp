@@ -6,7 +6,7 @@
   
   ;; Test 1: Go to first line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 2 5)  ; Start on third line
     (goto-line buf 1)
     (let ((point (buffer-get-point buf)))
@@ -15,7 +15,7 @@
   
   ;; Test 2: Go to middle line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 0 5)  ; Start on first line
     (goto-line buf 2)
     (let ((point (buffer-get-point buf)))
@@ -24,7 +24,7 @@
   
   ;; Test 3: Go to last line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 0 5)  ; Start on first line
     (goto-line buf 3)
     (let ((point (buffer-get-point buf)))
@@ -33,7 +33,7 @@
   
   ;; Test 4: Go to same line (no-op)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)  ; Start on second line at column 5
     (goto-line buf 2)  ; Go to second line (1-indexed)
     (let ((point (buffer-get-point buf)))
@@ -48,7 +48,7 @@
   
   ;; Test 1: Line number beyond buffer size (should go to last line)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 0 0)
     (goto-line buf 100)  ; Way beyond buffer size
     (let ((point (buffer-get-point buf)))
@@ -57,7 +57,7 @@
   
   ;; Test 2: Line number 0 (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)  ; Start position
     (goto-line buf 0)  ; Invalid line number
     (let ((point (buffer-get-point buf)))
@@ -66,7 +66,7 @@
   
   ;; Test 3: Negative line number (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)  ; Start position
     (goto-line buf -5)  ; Negative line number
     (let ((point (buffer-get-point buf)))
@@ -75,7 +75,7 @@
   
   ;; Test 4: Non-integer line number (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)  ; Start position
     (goto-line buf 2.5)  ; Non-integer line number
     (let ((point (buffer-get-point buf)))
@@ -84,7 +84,7 @@
   
   ;; Test 5: Empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (progn
@@ -97,7 +97,7 @@
   
   ;; Test 6: Single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("only line"))
+    (setf (lines buf) (vector "only line"))
     (buffer-set-point buf 0 5)
     (goto-line buf 1)
     (let ((point (buffer-get-point buf)))
@@ -112,7 +112,7 @@
   
   ;; Test 1: Movement operations don't interfere with existing undo stack
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)
     ;; Insert a character to create an undo record
     (insert-char buf #\X)
@@ -134,7 +134,7 @@
   
   ;; Test 2: Undo twice in a row after goto-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)
     (goto-line buf 1)
     ;; Try undo (should do nothing since movement doesn't create undo records)
@@ -151,7 +151,7 @@
   
   ;; Test 3: Redo twice in a row after goto-line (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)
     (goto-line buf 2)
     ;; Try redo (should do nothing since movement doesn't create undo/redo records)
@@ -174,7 +174,7 @@
   
   ;; Test 1: goto-line after various movements
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line" "fourth line"))
+    (setf (lines buf) (vector "first line" "second line" "third line" "fourth line"))
     (buffer-set-point buf 0 5)
     (forward-char buf)
     (next-line buf)
@@ -189,7 +189,7 @@
   
   ;; Test 2: Character movement after goto-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 2 5)
     (goto-line buf 1)
     (forward-char buf)
@@ -201,7 +201,7 @@
   
   ;; Test 3: Line movement after goto-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line" "fourth line"))
+    (setf (lines buf) (vector "first line" "second line" "third line" "fourth line"))
     (buffer-set-point buf 3 8)
     (goto-line buf 2)
     (next-line buf)
@@ -211,7 +211,7 @@
   
   ;; Test 4: Multiple goto-line calls
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line 1" "line 2" "line 3" "line 4" "line 5"))
+    (setf (lines buf) (vector "line 1" "line 2" "line 3" "line 4" "line 5"))
     (buffer-set-point buf 0 3)
     (goto-line buf 5)
     (let ((point1 (buffer-get-point buf)))
@@ -226,7 +226,7 @@
   
   ;; Test 5: goto-line with text operations
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (goto-line buf 2)
     (insert-char buf #\X)
     (let ((line-text (aref (lines buf) 1)))

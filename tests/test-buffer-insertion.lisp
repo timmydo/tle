@@ -6,7 +6,7 @@
   
   ;; Test 1: Insert at beginning of first line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 0)
     (insert-char buf #\X)
     (assert (string= (buffer-line buf 0) "Xhello") () 
@@ -18,7 +18,7 @@
   
   ;; Test 2: Insert at beginning of middle line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3"))
+    (setf (lines buf) (vector "line1" "line2" "line3"))
     (buffer-set-point buf 1 0)
     (insert-char buf #\A)
     (assert (string= (buffer-line buf 1) "Aline2") () 
@@ -30,7 +30,7 @@
   
   ;; Test 3: Insert at beginning of empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content"))
+    (setf (lines buf) (vector "" "content"))
     (buffer-set-point buf 0 0)
     (insert-char buf #\Z)
     (assert (string= (buffer-line buf 0) "Z") () 
@@ -48,7 +48,7 @@
   
   ;; Test 1: Insert in middle of word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 3)  ; Between 'l' and 'l'
     (insert-char buf #\X)
     (assert (string= (buffer-line buf 0) "helXlo") () 
@@ -60,7 +60,7 @@
   
   ;; Test 2: Insert between words
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)  ; Between 'hello' and ' world'
     (insert-char buf #\-)
     (assert (string= (buffer-line buf 0) "hello- world") () 
@@ -72,7 +72,7 @@
   
   ;; Test 3: Multiple insertions in sequence
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abc"))
+    (setf (lines buf) (vector "abc"))
     (buffer-set-point buf 0 1)  ; Between 'a' and 'b'
     (insert-char buf #\1)
     (insert-char buf #\2)
@@ -92,7 +92,7 @@
   
   ;; Test 1: Insert at end of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 5)  ; At end of "hello"
     (insert-char buf #\!)
     (assert (string= (buffer-line buf 0) "hello!") () 
@@ -104,7 +104,7 @@
   
   ;; Test 2: Insert at end of last line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "last"))
+    (setf (lines buf) (vector "first" "last"))
     (buffer-set-point buf 1 4)  ; At end of "last"
     (insert-char buf #\.)
     (assert (string= (buffer-line buf 1) "last.") () 
@@ -116,7 +116,7 @@
   
   ;; Test 3: Insert multiple characters at end
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)  ; At end of "test"
     (insert-char buf #\i)
     (insert-char buf #\n)
@@ -136,7 +136,7 @@
   
   ;; Test 1: Insert space character
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("helloworld"))
+    (setf (lines buf) (vector "helloworld"))
     (buffer-set-point buf 0 5)
     (insert-char buf #\Space)
     (assert (string= (buffer-line buf 0) "hello world") () 
@@ -145,7 +145,7 @@
   
   ;; Test 2: Insert punctuation
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)
     (insert-char buf #\,)
     (insert-char buf #\Space)
@@ -162,7 +162,7 @@
   
   ;; Test 3: Insert digits
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("version"))
+    (setf (lines buf) (vector "version"))
     (buffer-set-point buf 0 7)
     (insert-char buf #\Space)
     (insert-char buf #\1)
@@ -180,7 +180,7 @@
   
   ;; Test 1: Mark is cleared after character insertion
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 2)
     (buffer-set-mark buf 0 4)  ; Set a mark
     (assert (buffer-get-mark buf) () "Test 1 setup failed: mark should be set")
@@ -193,7 +193,7 @@
   
   ;; Test 2: Mark remains cleared after multiple insertions
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)
     (buffer-set-mark buf 0 3)  ; Set a mark
     (insert-char buf #\1)

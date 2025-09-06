@@ -6,7 +6,7 @@
   
   ;; Test 1: Delete character in middle of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 5)  ; At space before "world"
     (delete-char buf)
     (assert (string= (buffer-line buf 0) "helloworld") ()
@@ -17,7 +17,7 @@
   
   ;; Test 2: Delete first character of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 0)
     (delete-char buf)
     (assert (string= (buffer-line buf 0) "ello") ()
@@ -28,7 +28,7 @@
   
   ;; Test 3: Delete last character of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 4)  ; At 'o' in "hello"
     (delete-char buf)
     (assert (string= (buffer-line buf 0) "hell") ()
@@ -39,7 +39,7 @@
   
   ;; Test 4: Delete from single character line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a" "b" "c"))
+    (setf (lines buf) (vector "a" "b" "c"))
     (buffer-set-point buf 1 0)  ; At 'b'
     (delete-char buf)
     (assert (string= (buffer-line buf 1) "") ()
@@ -56,7 +56,7 @@
   
   ;; Test 1: Delete at end of line (should join with next line)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world" "third"))
+    (setf (lines buf) (vector "hello" "world" "third"))
     (buffer-set-point buf 0 5)  ; At end of first line
     (delete-char buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -71,7 +71,7 @@
   
   ;; Test 2: Join empty line with content
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content" "more"))
+    (setf (lines buf) (vector "" "content" "more"))
     (buffer-set-point buf 0 0)  ; At end of empty line
     (delete-char buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -84,7 +84,7 @@
   
   ;; Test 3: Join content with empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("content" "" "more"))
+    (setf (lines buf) (vector "content" "" "more"))
     (buffer-set-point buf 0 7)  ; At end of "content"
     (delete-char buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -97,7 +97,7 @@
   
   ;; Test 4: Join two empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "" "content"))
+    (setf (lines buf) (vector "" "" "content"))
     (buffer-set-point buf 0 0)
     (delete-char buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -116,7 +116,7 @@
   
   ;; Test 1: Delete at end of last line (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2"))
+    (setf (lines buf) (vector "line1" "line2"))
     (buffer-set-point buf 1 5)  ; At end of last line
     (let ((original-line-count (buffer-line-count buf))
           (original-line (buffer-line buf 1)))
@@ -131,7 +131,7 @@
   
   ;; Test 2: Delete from single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("solo"))
+    (setf (lines buf) (vector "solo"))
     (buffer-set-point buf 0 2)  ; At 'l' in "solo"
     (delete-char buf)
     (assert (= (buffer-line-count buf) 1) ()
@@ -142,7 +142,7 @@
   
   ;; Test 3: Delete at end of single line buffer (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("solo"))
+    (setf (lines buf) (vector "solo"))
     (buffer-set-point buf 0 4)  ; At end of "solo"
     (delete-char buf)
     (assert (= (buffer-line-count buf) 1) ()
@@ -153,7 +153,7 @@
   
   ;; Test 4: Empty buffer (should not crash)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (progn
@@ -164,7 +164,7 @@
   
   ;; Test 5: Multiple consecutive deletes
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abcdef"))
+    (setf (lines buf) (vector "abcdef"))
     (buffer-set-point buf 0 1)  ; At 'b'
     (delete-char buf)  ; Delete 'b' -> "acdef"
     (delete-char buf)  ; Delete 'c' -> "adef"
@@ -183,7 +183,7 @@
   
   ;; Test 1: Mark should be cleared after delete-char
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     (buffer-set-mark buf 0 2)
     (assert (buffer-get-mark buf) () "Test 1 setup failed: mark should be set")
@@ -193,7 +193,7 @@
   
   ;; Test 2: Mark cleared even when delete does nothing
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)  ; At end of line
     (buffer-set-mark buf 0 2)
     (assert (buffer-get-mark buf) () "Test 2 setup failed: mark should be set")

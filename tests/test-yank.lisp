@@ -6,7 +6,7 @@
   
   ;; Test 1: Yank from empty kill ring (should do nothing)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)  ; At space
     (let ((original-line (buffer-line buf 0))
           (original-point (copy-list (buffer-get-point buf))))
@@ -19,7 +19,7 @@
   
   ;; Test 2: Kill then yank (single line)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)  ; At 'w'
     (buffer-set-mark buf 0 2)   ; At first 'l'
     ;; Kill the region "llo " (positions 2-6)
@@ -36,7 +36,7 @@
   
   ;; Test 3: Kill whole line then yank
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 1 3)  ; In middle of "line two"
     (buffer-clear-mark buf)
     ;; Kill whole line
@@ -60,7 +60,7 @@
   
   ;; Test 4: Multiple kills build kill ring, yank gets most recent
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abc def ghi"))
+    (setf (lines buf) (vector "abc def ghi"))
     ;; Kill "abc"
     (buffer-set-point buf 0 3)
     (buffer-set-mark buf 0 0)
@@ -88,7 +88,7 @@
   
   ;; Test 1: Kill and yank multi-line region
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line" "fourth line"))
+    (setf (lines buf) (vector "first line" "second line" "third line" "fourth line"))
     (buffer-set-point buf 2 6)  ; At 'd' in "second line"  
     (buffer-set-mark buf 1 3)   ; At 'o' in "second line"
     ;; Kill multi-line region
@@ -110,7 +110,7 @@
   
   ;; Test 2: Yank multi-line at different positions
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3"))
+    (setf (lines buf) (vector "line1" "line2" "line3"))
     ;; Kill whole middle line
     (buffer-set-point buf 1 2)
     (buffer-clear-mark buf)
@@ -138,7 +138,7 @@
   
   ;; Test 1: Copy then yank (no deletion)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("original text"))
+    (setf (lines buf) (vector "original text"))
     (buffer-set-point buf 0 9)  ; At 't' in "text"
     (buffer-set-mark buf 0 5)   ; At 'i' in "original"
     ;; Copy the region "nal " (positions 5-9)
@@ -154,7 +154,7 @@
   
   ;; Test 2: Copy whole line then yank
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "second" "third"))
+    (setf (lines buf) (vector "first" "second" "third"))
     (buffer-set-point buf 1 2)  ; In middle of "second"
     (buffer-clear-mark buf)
     ;; Copy whole line
@@ -182,7 +182,7 @@
   
   ;; Test 1: Basic yank undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)  ; At 'w'
     (buffer-set-mark buf 0 2)   ; At first 'l'
     ;; Kill region
@@ -208,7 +208,7 @@
   
   ;; Test 2: Yank twice in a row, then undo/redo twice
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)  ; After "te"
     (buffer-set-mark buf 0 0)   ; At beginning
     ;; Kill "te"
@@ -244,7 +244,7 @@
   
   ;; Test 3: Multi-line yank undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3"))
+    (setf (lines buf) (vector "line1" "line2" "line3"))
     ;; Kill whole middle line
     (buffer-set-point buf 1 2)
     (buffer-clear-mark buf)
@@ -284,7 +284,7 @@
   
   ;; Test 1: Yank at beginning of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 2)  ; After "he"
     (buffer-set-mark buf 0 0)   ; At beginning
     (kill-region buf)
@@ -299,7 +299,7 @@
   
   ;; Test 2: Yank at end of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)  ; At end
     (buffer-set-mark buf 0 3)   ; At 'l'
     (kill-region buf)
@@ -314,7 +314,7 @@
   
   ;; Test 3: Yank with empty string (should not crash)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)  ; After "te"
     (buffer-set-mark buf 0 2)   ; Same position (empty region)
     ;; Kill empty region
@@ -328,7 +328,7 @@
   
   ;; Test 4: Yank in single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("single"))
+    (setf (lines buf) (vector "single"))
     (buffer-set-point buf 0 3)  ; After "sin"
     (buffer-set-mark buf 0 1)   ; After "s"
     (kill-region buf)
@@ -349,7 +349,7 @@
   
   ;; Test 1: Mark should be cleared after yank
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     ;; Set up kill ring
     (buffer-set-point buf 0 6)
     (buffer-set-mark buf 0 2)

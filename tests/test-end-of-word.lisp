@@ -6,7 +6,7 @@
   
   ;; Test 1: Move to end from beginning of word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 0)  ; Beginning of "hello"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -15,7 +15,7 @@
   
   ;; Test 2: Move to end from middle of word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 2)  ; Middle of "hello"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -24,7 +24,7 @@
   
   ;; Test 3: Move to end from middle of second word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 7)  ; Beginning of "world"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -33,7 +33,7 @@
   
   ;; Test 4: From whitespace, move to end of next word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 5)  ; Space after "hello"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -48,7 +48,7 @@
   
   ;; Test 1: At end of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 11)  ; At end of buffer
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -57,7 +57,7 @@
   
   ;; Test 2: Single character word - should move to next word when already at end
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a b c"))
+    (setf (lines buf) (vector "a b c"))
     (buffer-set-point buf 0 0)  ; At "a"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -70,7 +70,7 @@
   
   ;; Test 3: Word at end of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test word"))
+    (setf (lines buf) (vector "test word"))
     (buffer-set-point buf 0 7)  ; Middle of last word
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -79,7 +79,7 @@
   
   ;; Test 4: From punctuation to next word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("word!!!test"))
+    (setf (lines buf) (vector "word!!!test"))
     (buffer-set-point buf 0 5)  ; At middle of !!!
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -88,7 +88,7 @@
   
   ;; Test 5: Underscore in word (should be treated as word character)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello_world next"))
+    (setf (lines buf) (vector "hello_world next"))
     (buffer-set-point buf 0 3)  ; Middle of "hello_world"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -97,7 +97,7 @@
   
   ;; Test 6: Numbers in words
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("word123 next"))
+    (setf (lines buf) (vector "word123 next"))
     (buffer-set-point buf 0 2)  ; Middle of "word123"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -112,7 +112,7 @@
   
   ;; Test 1: From first line to end of word on same line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line"))
+    (setf (lines buf) (vector "first line" "second line"))
     (buffer-set-point buf 0 2)  ; Middle of "first"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -121,7 +121,7 @@
   
   ;; Test 2: From end of line to next line's first word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line"))
+    (setf (lines buf) (vector "first line" "second line"))
     (buffer-set-point buf 0 10)  ; End of first line
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -130,7 +130,7 @@
   
   ;; Test 3: From whitespace at beginning of line to first word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "   second line"))
+    (setf (lines buf) (vector "first line" "   second line"))
     (buffer-set-point buf 1 1)  ; In whitespace at beginning of second line
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -139,7 +139,7 @@
   
   ;; Test 4: Empty line handling
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("word" "" "next"))
+    (setf (lines buf) (vector "word" "" "next"))
     (buffer-set-point buf 0 2)  ; Middle of "word"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -153,7 +153,7 @@
   
   ;; Test 5: Multiple empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("word" "" "" "next"))
+    (setf (lines buf) (vector "word" "" "" "next"))
     (buffer-set-point buf 0 2)  ; Middle of "word"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -173,7 +173,7 @@
   
   ;; Test 1: Mixed punctuation
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello,world;test"))
+    (setf (lines buf) (vector "hello,world;test"))
     (buffer-set-point buf 0 2)  ; Middle of "hello"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -187,7 +187,7 @@
   
   ;; Test 2: Tabs and multiple spaces
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("word1	  word2"))  ; Tab and spaces
+    (setf (lines buf) (vector "word1	  word2"))  ; Tab and spaces
     (buffer-set-point buf 0 2)  ; Middle of "word1"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -201,7 +201,7 @@
   
   ;; Test 3: Consecutive punctuation
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("word1!!!word2"))
+    (setf (lines buf) (vector "word1!!!word2"))
     (buffer-set-point buf 0 3)  ; Middle of "word1"
     (end-of-word buf)
     (let ((point (buffer-get-point buf)))
@@ -215,7 +215,7 @@
   (format t "Running end-of-word undo tests...~%")
   
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 3)  ; Middle of "hello"
     
     ;; Check initial undo tree state
@@ -237,7 +237,7 @@
   ;; Since buffer-insert is not implemented, we'll just test that end-of-word
   ;; doesn't interfere with existing undo/redo functionality
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     
     ;; Test basic end-of-word functionality
     (buffer-set-point buf 0 3)  ; Middle of "hello"

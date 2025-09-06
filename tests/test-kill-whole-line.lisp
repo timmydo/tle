@@ -6,7 +6,7 @@
   
   ;; Test 1: Kill entire line from middle
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line" "third line"))
+    (setf (lines buf) (vector "hello world" "second line" "third line"))
     (buffer-set-point buf 0 5)  ; At space in first line
     (kill-whole-line buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -19,7 +19,7 @@
   
   ;; Test 2: Kill from beginning of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 0)  ; At beginning of second line
     (kill-whole-line buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -34,7 +34,7 @@
   
   ;; Test 3: Kill last line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "last line"))
+    (setf (lines buf) (vector "first line" "second line" "last line"))
     (buffer-set-point buf 2 4)  ; In last line
     (kill-whole-line buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -49,7 +49,7 @@
   
   ;; Test 4: Kill entire single character line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a" "b" "c"))
+    (setf (lines buf) (vector "a" "b" "c"))
     (buffer-set-point buf 1 0)  ; At 'b'
     (kill-whole-line buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -68,7 +68,7 @@
   
   ;; Test 1: Single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("solo line"))
+    (setf (lines buf) (vector "solo line"))
     (buffer-set-point buf 0 4)  ; At space before "line"
     (kill-whole-line buf)
     (assert (= (buffer-line-count buf) 1) ()
@@ -81,7 +81,7 @@
   
   ;; Test 2: Empty line in multi-line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "" "third"))
+    (setf (lines buf) (vector "first" "" "third"))
     (buffer-set-point buf 1 0)  ; On empty line
     (kill-whole-line buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -94,7 +94,7 @@
   
   ;; Test 3: Empty buffer (should not crash)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (progn
@@ -105,7 +105,7 @@
   
   ;; Test 4: Multiple consecutive kills
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3" "line4"))
+    (setf (lines buf) (vector "line1" "line2" "line3" "line4"))
     (buffer-set-point buf 1 2)  ; In "line2"
     (kill-whole-line buf)  ; Kill "line2"
     (assert (= (buffer-line-count buf) 3) ()
@@ -127,7 +127,7 @@
   
   ;; Test 1: Mark should be cleared after kill-whole-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 5)
     (buffer-set-mark buf 0 2)
     (assert (buffer-get-mark buf) () "Test 1 setup failed: mark should be set")
@@ -137,7 +137,7 @@
   
   ;; Test 2: Mark cleared in single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("only line"))
+    (setf (lines buf) (vector "only line"))
     (buffer-set-point buf 0 5)
     (buffer-set-mark buf 0 2)
     (assert (buffer-get-mark buf) () "Test 2 setup failed: mark should be set")
@@ -153,7 +153,7 @@
   
   ;; Test 1: Basic undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)  ; In second line
     (let ((original-count (buffer-line-count buf))
           (original-point (copy-list (buffer-get-point buf))))
@@ -181,7 +181,7 @@
   
   ;; Test 2: Single line buffer undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("only line"))
+    (setf (lines buf) (vector "only line"))
     (buffer-set-point buf 0 3)
     (let ((original-line (buffer-line buf 0))
           (original-point (copy-list (buffer-get-point buf))))
@@ -203,7 +203,7 @@
   
   ;; Test 3: Multiple operations with undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3" "line4"))
+    (setf (lines buf) (vector "line1" "line2" "line3" "line4"))
     (buffer-set-point buf 1 2)
     ;; Kill "line2"
     (kill-whole-line buf)
@@ -239,7 +239,7 @@
   
   ;; Test: Double kill-whole-line followed by undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3" "line4"))
+    (setf (lines buf) (vector "line1" "line2" "line3" "line4"))
     (buffer-set-point buf 1 2)  ; Position in "line2"
     (let ((original-count (buffer-line-count buf)))
       ;; First kill-whole-line
@@ -288,7 +288,7 @@
   
   ;; Test: Kill last two lines, then undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3"))
+    (setf (lines buf) (vector "line1" "line2" "line3"))
     (buffer-set-point buf 2 3)  ; Position in last line "line3"
     (format t "Initial state: 3 lines, cursor at (2,3)~%")
     

@@ -6,7 +6,7 @@
   
   ;; Test 1: Find text in same line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 0)  ; Beginning
     (let ((result (search-forward buf "world")))
       (assert result () "Test 1a failed: should find 'world'")
@@ -16,7 +16,7 @@
   
   ;; Test 2: Find from current position
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world hello"))
+    (setf (lines buf) (vector "hello world hello"))
     (buffer-set-point buf 0 7)  ; After first "hello"
     (let ((result (search-forward buf "hello")))
       (assert result () "Test 2 failed: should find second 'hello'")
@@ -26,7 +26,7 @@
   
   ;; Test 3: Text not found
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "missing")))
       (assert (not result) () "Test 3 failed: should not find 'missing'")
@@ -36,7 +36,7 @@
   
   ;; Test 4: Find across lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world test"))
+    (setf (lines buf) (vector "hello" "world test"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "world")))
       (assert result () "Test 4 failed: should find 'world' on next line")
@@ -52,7 +52,7 @@
   
   ;; Test 1: Empty search string
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "")))
       (assert (not result) () "Test 1 failed: empty search should return nil"))
@@ -60,7 +60,7 @@
   
   ;; Test 2: Nil search string
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf nil)))
       (assert (not result) () "Test 2 failed: nil search should return nil"))
@@ -68,7 +68,7 @@
   
   ;; Test 3: Search at end of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 11)  ; At end
     (let ((result (search-forward buf "hello")))
       (assert (not result) () "Test 3 failed: should not find text when at end")
@@ -78,14 +78,14 @@
   
   ;; Test 4: Search in empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())  ; Empty buffer
+    (setf (lines buf) (vector ))  ; Empty buffer
     (let ((result (search-forward buf "test")))
       (assert (not result) () "Test 4 failed: should not find text in empty buffer"))
     (format t "✓ Test 4 passed: Search in empty buffer~%"))
   
   ;; Test 5: Case sensitive search
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("Hello World"))
+    (setf (lines buf) (vector "Hello World"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "hello")))
       (assert (not result) () "Test 5 failed: search should be case sensitive"))
@@ -93,7 +93,7 @@
   
   ;; Test 6: Find partial word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "ell")))
       (assert result () "Test 6 failed: should find partial word 'ell'")
@@ -103,7 +103,7 @@
   
   ;; Test 7: Single character search
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "o")))
       (assert result () "Test 7 failed: should find single character 'o'")
@@ -119,7 +119,7 @@
   
   ;; Test 1: Search across multiple lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line with target" "third line"))
+    (setf (lines buf) (vector "first line" "second line with target" "third line"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "target")))
       (assert result () "Test 1 failed: should find 'target' in second line")
@@ -129,7 +129,7 @@
   
   ;; Test 2: Search starting from middle line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first target" "second line" "third target"))
+    (setf (lines buf) (vector "first target" "second line" "third target"))
     (buffer-set-point buf 1 5)  ; Middle of second line
     (let ((result (search-forward buf "target")))
       (assert result () "Test 2 failed: should find 'target' in third line")
@@ -139,7 +139,7 @@
   
   ;; Test 3: Search with empty lines in between
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "" "target here"))
+    (setf (lines buf) (vector "first" "" "target here"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "target")))
       (assert result () "Test 3 failed: should find 'target' after empty line")
@@ -149,7 +149,7 @@
   
   ;; Test 4: Text spans across lines - should not find
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("tar" "get"))
+    (setf (lines buf) (vector "tar" "get"))
     (buffer-set-point buf 0 0)
     (let ((result (search-forward buf "target")))
       (assert (not result) () "Test 4 failed: should not find text spanning lines"))
@@ -162,7 +162,7 @@
   (format t "Running search-forward undo tests...~%")
   
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 0)
     
     ;; Check initial state
@@ -219,7 +219,7 @@
   (format t "Running search-forward mark clearing tests...~%")
   
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 0)
     
     ;; Set a mark
@@ -256,7 +256,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer with test content
-    (setf (lines buffer) #("hello world test" "second line"))
+    (setf (lines buffer) (vector "hello world test" "second line"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     
@@ -306,7 +306,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer
-    (setf (lines buffer) #("hello world test"))
+    (setf (lines buffer) (vector "hello world test"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     
@@ -341,7 +341,7 @@
   (let ((editor (make-instance 'standard-editor))
         (buffer (make-instance 'standard-buffer)))
     ;; Setup buffer
-    (setf (lines buffer) #("hello world test"))
+    (setf (lines buffer) (vector "hello world test"))
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)
     

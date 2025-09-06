@@ -6,7 +6,7 @@
   
   ;; Test 1: Insert char and undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 2)  ; Position at 'l' in "hello"
     (insert-char buf #\X)
     (assert (string= (buffer-line buf 0) "heXllo") () 
@@ -24,7 +24,7 @@
   
   ;; Test 2: Multiple insertions and undos
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)  ; At end of "test"
     (insert-char buf #\1)
     (insert-char buf #\2)
@@ -52,7 +52,7 @@
   
   ;; Test 1: Delete char and undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 2)  ; Position at third 'l' in "hello"
     (delete-char buf)
     (assert (string= (buffer-line buf 0) "helo") () 
@@ -68,7 +68,7 @@
   
   ;; Test 2: Delete at end of line (joining lines) and undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 5)  ; At end of "hello"
     (delete-char buf)
     (assert (string= (buffer-line buf 0) "helloworld") () 
@@ -96,7 +96,7 @@
   
   ;; Test 1: Insert newline and undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)  ; Between "hello" and " world"
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -124,7 +124,7 @@
   
   ;; Test 1: Undo then redo character insertion
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)
     (insert-char buf #\X)
     (assert (string= (buffer-line buf 0) "teXst") ()
@@ -143,7 +143,7 @@
   
   ;; Test 2: Multiple operations with undo/redo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abc"))
+    (setf (lines buf) (vector "abc"))
     (buffer-set-point buf 0 1)
     (insert-char buf #\1)  ; a1bc
     (insert-char buf #\2)  ; a12bc
@@ -181,7 +181,7 @@
   
   ;; Test 1: Create branch in undo tree
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     
     ;; Create initial sequence
@@ -212,7 +212,7 @@
   
   ;; Test 1: Operations with undo recording disabled
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     
     ;; Record one operation normally

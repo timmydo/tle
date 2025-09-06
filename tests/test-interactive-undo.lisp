@@ -7,7 +7,7 @@
   (let ((editor (make-standard-editor))
         (buf (make-standard-buffer "*test*")))
     ;; Setup
-    (setf (lines buf) #("hello world hello"))
+    (setf (lines buf) (vector "hello world hello"))
     (buffer-set-point buf 0 0)
     (setf (buffers editor) (list buf))
     

@@ -30,7 +30,7 @@
   
   ;; Test 1: Point operations
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3"))
+    (setf (lines buf) (vector "line1" "line2" "line3"))
     
     ;; Test point setting and getting
     (buffer-set-point buf 1 2)
@@ -46,7 +46,7 @@
   
   ;; Test 2: Mark operations
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2"))
+    (setf (lines buf) (vector "line1" "line2"))
     
     ;; Initially no mark
     (assert (null (buffer-get-mark buf)) ()
@@ -72,7 +72,7 @@
   
   ;; Test 1: Forward/backward char with line wrapping
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abc" "def" "ghi"))
+    (setf (lines buf) (vector "abc" "def" "ghi"))
     (buffer-set-point buf 0 2)  ; At 'c' in first line
     
     ;; Forward char should move to end of line
@@ -94,7 +94,7 @@
   
   ;; Test 2: Next/previous line with column preservation
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "hi" "goodbye everyone"))
+    (setf (lines buf) (vector "hello world" "hi" "goodbye everyone"))
     (buffer-set-point buf 0 6)  ; At 'w' in "hello world"
     
     ;; Next line should preserve column if possible
@@ -122,7 +122,7 @@
   
   ;; Test 1: Insert into empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     ;; This should not crash (though it won't insert)
     (handler-case
         (progn
@@ -133,7 +133,7 @@
   
   ;; Test 2: Insert with point beyond line end
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)
     (insert-char buf #\X)
     (assert (string= (buffer-line buf 0) "teXst") ()
@@ -142,7 +142,7 @@
   
   ;; Test 3: Newline at various positions
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     
     ;; Newline at beginning
     (buffer-set-point buf 0 0)
@@ -164,7 +164,7 @@
   
   ;; Test 1: Delete at end of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)  ; At end
     ;; Should do nothing
     (delete-char buf)
@@ -174,7 +174,7 @@
   
   ;; Test 2: Delete to join single-character lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a" "b" "c"))
+    (setf (lines buf) (vector "a" "b" "c"))
     (buffer-set-point buf 0 1)  ; At end of first line
     (delete-char buf)
     (assert (= (buffer-line-count buf) 2) ()
@@ -187,7 +187,7 @@
   
   ;; Test 3: Delete from empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content"))
+    (setf (lines buf) (vector "" "content"))
     (buffer-set-point buf 0 0)
     (delete-char buf)
     (assert (= (buffer-line-count buf) 1) ()
@@ -204,7 +204,7 @@
   
   ;; Test 1: Tree structure after operations
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     
     (let ((tree (buffer-undo-tree buf)))

@@ -7,7 +7,7 @@
   ;; Test 1: Save buffer to new file
   (let ((buf (make-instance 'standard-buffer))
         (test-file "/tmp/test-save-buffer-as-1.txt"))
-    (setf (lines buf) #("line 1" "line 2" "line 3"))
+    (setf (lines buf) (vector "line 1" "line 2" "line 3"))
     (setf (buffer-name buf) "test-buffer")
     
     ;; Clean up any existing test file
@@ -46,7 +46,7 @@
   ;; Test 1: Save empty buffer
   (let ((buf (make-instance 'standard-buffer))
         (test-file "/tmp/test-save-buffer-as-empty.txt"))
-    (setf (lines buf) #(""))
+    (setf (lines buf) (vector ""))
     
     ;; Clean up any existing test file
     (when (probe-file test-file)
@@ -76,7 +76,7 @@
   ;; Test 1: Overwrite existing file
   (let ((buf (make-instance 'standard-buffer))
         (test-file "/tmp/test-save-buffer-as-overwrite.txt"))
-    (setf (lines buf) #("new content" "second line"))
+    (setf (lines buf) (vector "new content" "second line"))
     
     ;; Create an existing file with different content
     (with-open-file (stream test-file :direction :output :if-exists :supersede)
@@ -105,7 +105,7 @@
   ;; Test 1: File-path update from nil
   (let ((buf (make-instance 'standard-buffer))
         (test-file "/tmp/test-save-buffer-as-path1.txt"))
-    (setf (lines buf) #("test content"))
+    (setf (lines buf) (vector "test content"))
     (setf (buffer-file-path buf) nil)
     
     ;; Clean up any existing test file
@@ -125,7 +125,7 @@
   (let ((buf (make-instance 'standard-buffer))
         (old-file "/tmp/test-save-buffer-as-old.txt")
         (new-file "/tmp/test-save-buffer-as-new.txt"))
-    (setf (lines buf) #("test content"))
+    (setf (lines buf) (vector "test content"))
     (setf (buffer-file-path buf) old-file)
     
     ;; Clean up any existing test files
@@ -150,7 +150,7 @@
   ;; Test 1: Invalid directory path
   (let ((buf (make-instance 'standard-buffer))
         (invalid-file "/nonexistent/directory/test.txt"))
-    (setf (lines buf) #("test content"))
+    (setf (lines buf) (vector "test content"))
     (setf (buffer-file-path buf) nil)
     
     (let ((result (save-buffer-as buf invalid-file)))

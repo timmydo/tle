@@ -13,7 +13,7 @@
   (let ((editor (tle::make-standard-editor)))
     (let ((buffer (tle::current-buffer editor)))
       ;; Set up buffer with test content
-      (setf (tle::lines buffer) #("hello world" "test hello world test" "another line with hello"))
+      (setf (tle::lines buffer) (vector "hello world" "test hello world test" "another line with hello"))
       (tle::buffer-set-point buffer 0 0)
       
       ;; Store original position
@@ -55,7 +55,7 @@
   (let ((editor (tle::make-standard-editor)))
     (let ((buffer (tle::current-buffer editor)))
       ;; Set up buffer with test content
-      (setf (tle::lines buffer) #("hello world" "test hello world test"))
+      (setf (tle::lines buffer) (vector "hello world" "test hello world test"))
       (tle::buffer-set-point buffer 1 5)  ; Position at line 1, column 5
       
       ;; Start isearch

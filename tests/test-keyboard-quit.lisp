@@ -6,7 +6,7 @@
   
   ;; Test 1: keyboard-quit with mark set should clear it
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 5)
     ;; Set mark at current position
     (let ((point (buffer-get-point buf)))
@@ -27,7 +27,7 @@
   
   ;; Test 2: keyboard-quit with no mark should not cause error
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     
     ;; Verify no mark is set
@@ -46,7 +46,7 @@
   
   ;; Test 3: keyboard-quit doesn't affect cursor position
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 7)
     (let ((point (buffer-get-point buf)))
       (buffer-set-mark buf (first point) (second point)))
@@ -76,7 +76,7 @@
   
   ;; Test: Insert text, set mark, keyboard-quit, then undo should still work
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)
     
     ;; Insert some text
@@ -111,7 +111,7 @@
   
   ;; Test 2: Multiple operations with keyboard-quit in between
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     
     ;; Insert first character
@@ -155,7 +155,7 @@
   
   ;; Test 1: keyboard-quit with mark on different line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)  ; On second line
     (buffer-set-mark buf 0 3)   ; Mark on first line
     
@@ -175,7 +175,7 @@
   
   ;; Test 2: keyboard-quit after selection operations
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("selected text"))
+    (setf (lines buf) (vector "selected text"))
     (buffer-set-point buf 0 8)
     (buffer-set-mark buf 0 0)  ; Mark at beginning, point at position 8
     
@@ -198,7 +198,7 @@
   
   ;; Test 3: Multiple keyboard-quit calls
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)
     (buffer-set-mark buf 0 4)
     

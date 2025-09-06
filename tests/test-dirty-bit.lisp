@@ -6,14 +6,14 @@
   
   ;; Test 1: New buffer starts clean
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (assert (not (buffer-dirty-p buf)) ()
             "Test 1 failed: new buffer should not be dirty")
     (format t "✓ Test 1 passed: New buffer starts clean~%"))
   
   ;; Test 2: Buffer becomes dirty after modification
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     (insert-char buf #\X)
     (assert (buffer-dirty-p buf) ()
@@ -22,7 +22,7 @@
   
   ;; Test 3: Buffer becomes clean after save
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     (insert-char buf #\X)
     (assert (buffer-dirty-p buf) ()
@@ -41,7 +41,7 @@
   
   ;; Test the problematic scenario: save, modify, undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     
     ;; Start clean (as if just saved)
@@ -69,7 +69,7 @@
   
   ;; Test 1: Multiple modifications and undos
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     
     ;; Start clean (saved state)
@@ -97,7 +97,7 @@
   
   ;; Test 2: Undo past saved state, then redo to saved state
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)
     
     ;; Make a change, then mark as saved

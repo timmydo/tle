@@ -57,7 +57,7 @@
   
   ;; Test 5: Empty buffer handling
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (page-down buf)  ; Should not crash
     (format t "✓ Test 5 passed: Page-down with empty buffer doesn't crash~%"))
@@ -121,7 +121,7 @@
   
   ;; Test 5: Empty buffer handling
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (page-up buf)  ; Should not crash
     (format t "✓ Test 5 passed: Page-up with empty buffer doesn't crash~%"))
@@ -202,7 +202,7 @@
   
   ;; Test 2: Single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("Only line"))
+    (setf (lines buf) (vector "Only line"))
     (buffer-set-point buf 0 5)
     
     (page-down buf)  ; Should stay in place

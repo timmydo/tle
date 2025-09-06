@@ -6,7 +6,7 @@
   
   ;; Test 1: From middle of buffer to beginning
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 5)  ; Middle of second line
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -15,7 +15,7 @@
   
   ;; Test 2: From end of buffer to beginning
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 2 10)  ; End of last line
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -24,7 +24,7 @@
   
   ;; Test 3: Already at beginning of buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 0 0)  ; Already at beginning
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -33,7 +33,7 @@
   
   ;; Test 4: From middle of first line to beginning
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)  ; Middle of first line
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -48,7 +48,7 @@
   
   ;; Test 1: Single line buffer, middle position
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -57,7 +57,7 @@
   
   ;; Test 2: Single line buffer, end position
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 11)
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -66,7 +66,7 @@
   
   ;; Test 3: Single character buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a"))
+    (setf (lines buf) (vector "a"))
     (buffer-set-point buf 0 1)
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -81,7 +81,7 @@
   
   ;; Test 1: Various positions in multi-line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line 1" "line 2" "line 3" "line 4" "line 5"))
+    (setf (lines buf) (vector "line 1" "line 2" "line 3" "line 4" "line 5"))
     
     ;; From second line
     (buffer-set-point buf 1 3)
@@ -123,7 +123,7 @@
   
   ;; Test 1: Empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (progn
@@ -136,7 +136,7 @@
   
   ;; Test 2: Single empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #(""))
+    (setf (lines buf) (vector ""))
     (buffer-set-point buf 0 0)
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -145,7 +145,7 @@
   
   ;; Test 3: Multiple empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "" ""))
+    (setf (lines buf) (vector "" "" ""))
     (buffer-set-point buf 2 0)  ; Last empty line
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -154,7 +154,7 @@
   
   ;; Test 4: Mixed empty and non-empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("content" "" "more content" "" "final"))
+    (setf (lines buf) (vector "content" "" "more content" "" "final"))
     (buffer-set-point buf 4 5)  ; End of final line
     (beginning-of-buffer buf)
     (let ((point (buffer-get-point buf)))
@@ -179,7 +179,7 @@
   
   ;; Test 1: Movement operations don't interfere with existing undo stack
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line"))
+    (setf (lines buf) (vector "first line" "second line"))
     (buffer-set-point buf 1 5)
     ;; Insert a character to create an undo record
     (insert-char buf #\X)
@@ -201,7 +201,7 @@
   
   ;; Test 2: Undo twice in a row
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line"))
+    (setf (lines buf) (vector "first line" "second line"))
     (buffer-set-point buf 1 5)
     (beginning-of-buffer buf)
     ;; Try undo (should do nothing since movement doesn't create undo records)
@@ -224,7 +224,7 @@
   
   ;; Test 1: beginning-of-buffer after various movements
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 0 5)
     (forward-char buf)
     (next-line buf)
@@ -239,7 +239,7 @@
   
   ;; Test 2: Character movement after beginning-of-buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line"))
+    (setf (lines buf) (vector "first line" "second line"))
     (buffer-set-point buf 1 5)
     (beginning-of-buffer buf)
     (forward-char buf)
@@ -251,7 +251,7 @@
   
   ;; Test 3: Line movement after beginning-of-buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 2 8)
     (beginning-of-buffer buf)
     (next-line buf)
@@ -261,7 +261,7 @@
   
   ;; Test 4: Comparison with beginning-of-line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("  first line" "  second line"))
+    (setf (lines buf) (vector "  first line" "  second line"))
     (buffer-set-point buf 1 8)
     ;; Use beginning-of-line (should go to start of current line)
     (beginning-of-line buf)

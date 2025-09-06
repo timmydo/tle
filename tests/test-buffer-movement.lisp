@@ -6,7 +6,7 @@
   
   ;; Test 1: Normal forward movement within a line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 5)
     (forward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -15,7 +15,7 @@
   
   ;; Test 2: Forward movement at end of line (should wrap to next line)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 5)  ; At end of first line
     (forward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -24,7 +24,7 @@
   
   ;; Test 3: Forward movement at end of buffer (should stay in place)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 1 5)  ; At end of last line
     (forward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -33,7 +33,7 @@
   
   ;; Test 4: Forward movement from middle of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("testing"))
+    (setf (lines buf) (vector "testing"))
     (buffer-set-point buf 0 3)
     (forward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -42,7 +42,7 @@
   
   ;; Test 5: Forward movement with empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content"))
+    (setf (lines buf) (vector "" "content"))
     (buffer-set-point buf 0 0)  ; At beginning of empty line
     (forward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -51,7 +51,7 @@
   
   ;; Test 6: Single character line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a" "b"))
+    (setf (lines buf) (vector "a" "b"))
     (buffer-set-point buf 0 0)
     (forward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -69,7 +69,7 @@
   
   ;; Test 1: Normal backward movement within a line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 6)
     (backward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -78,7 +78,7 @@
   
   ;; Test 2: Backward movement at beginning of line (should wrap to end of previous line)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 1 0)  ; At beginning of second line
     (backward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -87,7 +87,7 @@
   
   ;; Test 3: Backward movement at beginning of buffer (should stay in place)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 0)  ; At beginning of first line
     (backward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -96,7 +96,7 @@
   
   ;; Test 4: Backward movement from middle of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("testing"))
+    (setf (lines buf) (vector "testing"))
     (buffer-set-point buf 0 4)
     (backward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -105,7 +105,7 @@
   
   ;; Test 5: Backward movement to empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content"))
+    (setf (lines buf) (vector "" "content"))
     (buffer-set-point buf 1 0)  ; At beginning of second line
     (backward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -114,7 +114,7 @@
   
   ;; Test 6: Single character line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a" "b"))
+    (setf (lines buf) (vector "a" "b"))
     (buffer-set-point buf 1 0)
     (backward-char buf)  ; Should wrap to end of previous line
     (let ((point (buffer-get-point buf)))
@@ -126,7 +126,7 @@
   
   ;; Test 7: Multiple lines with varying lengths
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("short" "much longer line" "x"))
+    (setf (lines buf) (vector "short" "much longer line" "x"))
     (buffer-set-point buf 2 0)  ; Beginning of third line
     (backward-char buf)  ; Should go to end of second line
     (let ((point (buffer-get-point buf)))
@@ -141,7 +141,7 @@
   
   ;; Test 1: Forward then backward should return to original position
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     (let ((original-point (buffer-get-point buf)))
       (forward-char buf)
@@ -153,7 +153,7 @@
   
   ;; Test 2: Multiple forward movements across lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("ab" "cd" "ef"))
+    (setf (lines buf) (vector "ab" "cd" "ef"))
     (buffer-set-point buf 0 0)
     (forward-char buf)  ; (0 1)
     (forward-char buf)  ; (0 2) - at end of line
@@ -165,7 +165,7 @@
   
   ;; Test 3: Multiple backward movements across lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("ab" "cd" "ef"))
+    (setf (lines buf) (vector "ab" "cd" "ef"))
     (buffer-set-point buf 2 1)
     (backward-char buf)  ; (2 0)
     (backward-char buf)  ; (1 2) - wrap to end of previous line
@@ -183,7 +183,7 @@
   
   ;; Test 1: Single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("only line"))
+    (setf (lines buf) (vector "only line"))
     (buffer-set-point buf 0 5)
     (forward-char buf)
     (let ((point (buffer-get-point buf)))
@@ -196,7 +196,7 @@
   
   ;; Test 2: Empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     ;; These should not crash, but behavior might be undefined
     ;; We'll catch any errors
@@ -210,7 +210,7 @@
   
   ;; Test 3: Buffer with only empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "" ""))
+    (setf (lines buf) (vector "" "" ""))
     (buffer-set-point buf 1 0)
     (forward-char buf)  ; Should go to next line
     (let ((point (buffer-get-point buf)))

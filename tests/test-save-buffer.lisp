@@ -12,7 +12,7 @@
       (delete-file test-file))
     
     ;; Setup buffer with file path
-    (setf (lines buf) #("hello world" "test line two"))
+    (setf (lines buf) (vector "hello world" "test line two"))
     (setf (buffer-file-path buf) test-file)
     (buffer-set-point buf 0 0)
     
@@ -45,7 +45,7 @@ test line two") ()
   (let ((buf (make-instance 'standard-buffer)))
     
     ;; Setup buffer without file path
-    (setf (lines buf) #("hello world" "test line two"))
+    (setf (lines buf) (vector "hello world" "test line two"))
     (setf (buffer-file-path buf) nil)
     (buffer-set-point buf 0 0)
     
@@ -68,7 +68,7 @@ test line two") ()
       (delete-file test-file))
     
     ;; Setup empty buffer with file path
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (setf (buffer-file-path buf) test-file)
     (buffer-set-point buf 0 0)
     
@@ -105,7 +105,7 @@ test line two") ()
       (write-string "old content" stream))
     
     ;; Setup buffer with new content
-    (setf (lines buf) #("new content line 1" "new content line 2"))
+    (setf (lines buf) (vector "new content line 1" "new content line 2"))
     (setf (buffer-file-path buf) test-file)
     (buffer-set-point buf 0 0)
     
@@ -137,7 +137,7 @@ new content line 2") ()
         (invalid-file "/invalid/path/that/does/not/exist/file.txt"))
     
     ;; Setup buffer with invalid file path
-    (setf (lines buf) #("test content"))
+    (setf (lines buf) (vector "test content"))
     (setf (buffer-file-path buf) invalid-file)
     (buffer-set-point buf 0 0)
     
@@ -162,7 +162,7 @@ new content line 2") ()
       (delete-file test-file))
     
     ;; Setup editor with buffer
-    (setf (lines buffer) #("hello world" "save command test"))
+    (setf (lines buffer) (vector "hello world" "save command test"))
     (setf (buffer-file-path buffer) test-file)
     (setf (buffers editor) (list buffer))
     (buffer-set-point buffer 0 0)

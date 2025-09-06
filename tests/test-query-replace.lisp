@@ -6,7 +6,7 @@
   
   ;; Test 1: Single replacement in same line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "world" "universe")))
       (assert (= result 1) () "Test 1a failed: should replace 1 occurrence")
@@ -16,7 +16,7 @@
   
   ;; Test 2: Multiple replacements in same line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("foo bar foo baz foo"))
+    (setf (lines buf) (vector "foo bar foo baz foo"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "foo" "qux")))
       (assert (= result 3) () "Test 2 failed: should replace 3 occurrences")
@@ -26,7 +26,7 @@
   
   ;; Test 3: No matches found
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 5)
     (let ((result (query-replace buf "missing" "found"))
           (point (buffer-get-point buf)))
@@ -36,7 +36,7 @@
   
   ;; Test 4: Replacement across multiple lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first test line" "second test here" "third test end"))
+    (setf (lines buf) (vector "first test line" "second test here" "third test end"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "test" "exam")))
       (assert (= result 3) () "Test 4 failed: should replace 3 occurrences")
@@ -53,7 +53,7 @@
   
   ;; Test 1: Empty search string
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "" "replacement")))
       (assert (= result 0) () "Test 1 failed: empty search should return 0 replacements"))
@@ -61,7 +61,7 @@
   
   ;; Test 2: Nil search string  
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf nil "replacement")))
       (assert (= result 0) () "Test 2 failed: nil search should return 0 replacements"))
@@ -69,7 +69,7 @@
   
   ;; Test 3: Empty replacement string
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world hello"))
+    (setf (lines buf) (vector "hello world hello"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "hello" "")))
       (assert (= result 2) () "Test 3 failed: should replace 2 occurrences")
@@ -79,14 +79,14 @@
   
   ;; Test 4: Search in empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (let ((result (query-replace buf "test" "replacement")))
       (assert (= result 0) () "Test 4 failed: should not replace anything in empty buffer"))
     (format t "✓ Test 4 passed: Search in empty buffer~%"))
   
   ;; Test 5: Case sensitive search
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("Hello World hello"))
+    (setf (lines buf) (vector "Hello World hello"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "hello" "hi")))
       (assert (= result 1) () "Test 5 failed: should only replace lowercase 'hello'")
@@ -96,7 +96,7 @@
   
   ;; Test 6: Replacement text longer than original
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a b a"))
+    (setf (lines buf) (vector "a b a"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "a" "replacement")))
       (assert (= result 2) () "Test 6 failed: should replace 2 occurrences")
@@ -106,7 +106,7 @@
   
   ;; Test 7: Replacement text shorter than original
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("testing another testing"))
+    (setf (lines buf) (vector "testing another testing"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "testing" "x")))
       (assert (= result 2) () "Test 7 failed: should replace 2 occurrences")
@@ -122,7 +122,7 @@
   
   ;; Test 1: Starting position doesn't affect results (always starts from beginning)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test middle test end"))
+    (setf (lines buf) (vector "test middle test end"))
     (buffer-set-point buf 0 10)  ; Start in middle
     (let ((result (query-replace buf "test" "exam")))
       (assert (= result 2) () "Test 1 failed: should find all matches regardless of starting position")
@@ -132,7 +132,7 @@
   
   ;; Test 2: Cursor position after successful replacements
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 8)
     (query-replace buf "world" "universe")
     (let ((point (buffer-get-point buf)))
@@ -142,7 +142,7 @@
   
   ;; Test 3: Multiple line replacements position tracking
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first foo" "second foo" "third foo"))
+    (setf (lines buf) (vector "first foo" "second foo" "third foo"))
     (buffer-set-point buf 1 5)
     (query-replace buf "foo" "bar")
     (let ((point (buffer-get-point buf)))
@@ -157,7 +157,7 @@
   (format t "Running query-replace undo tests...~%")
   
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test"))
+    (setf (lines buf) (vector "hello world test"))
     (buffer-set-point buf 0 0)
     
     ;; Check initial state
@@ -197,7 +197,7 @@
     
     ;; Test multiple replacements with undo
     (let ((buf2 (make-instance 'standard-buffer)))
-      (setf (lines buf2) #("foo bar foo"))
+      (setf (lines buf2) (vector "foo bar foo"))
       (buffer-set-point buf2 0 0)
       (let ((initial-content (buffer-line buf2 0)))
         (query-replace buf2 "foo" "baz")
@@ -232,7 +232,7 @@
   
   ;; Test 1: Overlapping matches prevention
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("aaaa"))
+    (setf (lines buf) (vector "aaaa"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "aa" "bb")))
       ;; Should replace "aa" at positions 0-1 and 2-3, resulting in "bbbb"
@@ -243,7 +243,7 @@
   
   ;; Test 2: Replacement affects subsequent search positions
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("ab ab ab"))
+    (setf (lines buf) (vector "ab ab ab"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "ab" "xyz")))
       (assert (= result 3) () "Test 2 failed: should replace 3 occurrences")
@@ -253,7 +253,7 @@
   
   ;; Test 3: Special characters in search/replace
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello (world) test"))
+    (setf (lines buf) (vector "hello (world) test"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "(world)" "[universe]")))
       (assert (= result 1) () "Test 3 failed: should replace 1 occurrence")
@@ -263,7 +263,7 @@
   
   ;; Test 4: Single character replacements
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a.b.c.d"))
+    (setf (lines buf) (vector "a.b.c.d"))
     (buffer-set-point buf 0 0)
     (let ((result (query-replace buf "." ",")))
       (assert (= result 3) () "Test 4 failed: should replace 3 occurrences")
@@ -279,7 +279,7 @@
   
   ;; Test 1: Default buffer should not have unintended region restriction
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test world end"))
+    (setf (lines buf) (vector "hello world test world end"))
     (buffer-set-point buf 0 0)
     ;; Ensure no mark is set (no unintended region)
     (buffer-clear-mark buf)
@@ -293,7 +293,7 @@
   ;; Test 2: Note - batch query-replace doesn't respect regions, only interactive does
   ;; This test documents the current behavior
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test world end"))
+    (setf (lines buf) (vector "hello world test world end"))
     (buffer-set-point buf 0 0)
     (buffer-set-mark buf 0 11) ; Region covers only "hello world"
     (let ((result (query-replace buf "world" "universe")))
@@ -306,7 +306,7 @@
   
   ;; Test 3: Find-matches-from-point should find all matches without region
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test world end"))
+    (setf (lines buf) (vector "hello world test world end"))
     (buffer-set-point buf 0 0)
     (buffer-clear-mark buf) ; Ensure no region
     (let ((matches (find-matches-from-point buf "world")))
@@ -318,7 +318,7 @@
   
   ;; Test 4: Find-matches-from-point should respect region when mark is set
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world test world end"))
+    (setf (lines buf) (vector "hello world test world end"))
     (buffer-set-point buf 0 0)
     (buffer-set-mark buf 0 11) ; Region covers only "hello world"
     (let ((matches (find-matches-from-point buf "world")))

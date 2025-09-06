@@ -6,7 +6,7 @@
   
   ;; Test 1: Set mark at beginning of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 0)
     ;; Simulate Ctrl+Space by setting mark at current point
     (let ((point (buffer-get-point buf)))
@@ -21,7 +21,7 @@
   
   ;; Test 2: Set mark in middle of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     ;; Simulate Ctrl+Space
     (let ((point (buffer-get-point buf)))
@@ -36,7 +36,7 @@
   
   ;; Test 3: Set mark, move cursor, verify selection
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     ;; Set mark at position 5
     (let ((point (buffer-get-point buf)))
@@ -53,7 +53,7 @@
   
   ;; Test 4: Set mark on different line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 7)  ; On second line, position 7
     ;; Set mark
     (let ((point (buffer-get-point buf)))
@@ -68,7 +68,7 @@
   
   ;; Test 5: Overwrite existing mark
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("testing"))
+    (setf (lines buf) (vector "testing"))
     (buffer-set-point buf 0 2)
     ;; Set initial mark
     (buffer-set-mark buf 0 4)
@@ -90,7 +90,7 @@
   
   ;; Test 1: Set mark, then insert character (should clear mark)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 3)
     ;; Set mark
     (let ((point (buffer-get-point buf)))
@@ -106,7 +106,7 @@
   
   ;; Test 2: Set mark, then insert newline (should clear mark)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 3)
     ;; Set mark
     (let ((point (buffer-get-point buf)))
@@ -126,7 +126,7 @@
   
   ;; Test 3: Set mark, move cursor, set new mark (should overwrite)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 3)
     ;; Set first mark
     (let ((point (buffer-get-point buf)))

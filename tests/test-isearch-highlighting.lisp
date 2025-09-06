@@ -85,7 +85,7 @@
   (let ((buffer (tle::make-empty-buffer "*test*"))
         (ui (make-instance 'tle::web-ui)))
     ;; Set up buffer with test content
-    (setf (tle::lines buffer) #("hello world" "test hello world test"))
+    (setf (tle::lines buffer) (vector "hello world" "test hello world test"))
     (tle::buffer-set-point buffer 0 0)
     
     ;; Test without isearch

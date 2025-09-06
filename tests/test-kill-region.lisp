@@ -6,7 +6,7 @@
   
   ;; Test 1: Kill region within same line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 6)  ; At 'w' in "world"
     (buffer-set-mark buf 0 2)   ; At 'l' in "hello"
     (kill-region buf)
@@ -19,7 +19,7 @@
   
   ;; Test 2: Kill region across multiple lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 2 4)  ; At space in "line three"
     (buffer-set-mark buf 0 5)   ; At 'o' in "line one"
     (kill-region buf)
@@ -34,7 +34,7 @@
   
   ;; Test 3: Kill region from point to mark (reverse direction)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abcdef"))
+    (setf (lines buf) (vector "abcdef"))
     (buffer-set-point buf 0 2)  ; At 'c'
     (buffer-set-mark buf 0 4)   ; At 'e'
     (kill-region buf)
@@ -46,7 +46,7 @@
   
   ;; Test 4: Kill entire line when region spans whole line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world" "test"))
+    (setf (lines buf) (vector "hello" "world" "test"))
     (buffer-set-point buf 1 5)  ; At end of "world"
     (buffer-set-mark buf 1 0)   ; At beginning of "world"
     (kill-region buf)
@@ -66,7 +66,7 @@
   
   ;; Test 1: Kill whole line when no mark is set
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 1 4)  ; In middle of "line two"
     (buffer-clear-mark buf)     ; Ensure no mark
     (kill-region buf)
@@ -80,7 +80,7 @@
   
   ;; Test 2: Kill whole line in single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("only line"))
+    (setf (lines buf) (vector "only line"))
     (buffer-set-point buf 0 3)
     (buffer-clear-mark buf)
     (kill-region buf)
@@ -100,7 +100,7 @@
   
   ;; Test 1: Empty region (point equals mark)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     (buffer-set-mark buf 0 5)   ; Mark at same position as point
     (let ((original-line (buffer-line buf 0)))
@@ -114,7 +114,7 @@
   
   ;; Test 2: Single character region
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abcde"))
+    (setf (lines buf) (vector "abcde"))
     (buffer-set-point buf 0 2)  ; At 'c'
     (buffer-set-mark buf 0 3)   ; At 'd'
     (kill-region buf)
@@ -126,7 +126,7 @@
   
   ;; Test 3: Region spanning entire buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "middle" "last"))
+    (setf (lines buf) (vector "first" "middle" "last"))
     (buffer-set-point buf 2 4)  ; At end of "last"
     (buffer-set-mark buf 0 0)   ; At beginning of "first"
     (kill-region buf)
@@ -140,7 +140,7 @@
   
   ;; Test 4: Empty buffer (should not crash)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (progn
@@ -157,7 +157,7 @@
   
   ;; Test 1: Basic undo/redo with region
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)  ; At 'w'
     (buffer-set-mark buf 0 2)   ; At first 'l'
     (let ((original-line (buffer-line buf 0))
@@ -180,7 +180,7 @@
   
   ;; Test 2: Multiple kill-region operations with undo
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abcdefgh"))
+    (setf (lines buf) (vector "abcdefgh"))
     ;; First kill: remove "cd"
     (buffer-set-point buf 0 4)  ; At 'e'
     (buffer-set-mark buf 0 2)   ; At 'c'
@@ -205,7 +205,7 @@
   
   ;; Test 3: Undo/redo of whole line kill (no mark)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 1 3)
     (buffer-clear-mark buf)
     (let ((original-line-count (buffer-line-count buf))
@@ -224,7 +224,7 @@
   
   ;; Test 4: Test undo/redo twice in a row
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test line"))
+    (setf (lines buf) (vector "test line"))
     (buffer-set-point buf 0 5)  ; At space
     (buffer-set-mark buf 0 2)   ; At 's'
     (kill-region buf)
@@ -250,7 +250,7 @@
   
   ;; Test 5: Multi-line kill-region undo/redo with complete state restoration
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line" "fourth line"))
+    (setf (lines buf) (vector "first line" "second line" "third line" "fourth line"))
     (buffer-set-point buf 2 5)  ; At 'd' in "third line"
     (buffer-set-mark buf 1 3)   ; At 'o' in "second line"
     (let ((original-lines (buffer-line-count buf))
@@ -309,7 +309,7 @@
   
   ;; Test 1: Mark should be cleared after region kill
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)
     (buffer-set-mark buf 0 2)
     (assert (buffer-get-mark buf) () "Test 1 setup failed: mark should be set")
@@ -319,7 +319,7 @@
   
   ;; Test 2: Mark cleared after whole line kill
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two"))
+    (setf (lines buf) (vector "line one" "line two"))
     (buffer-set-point buf 0 3)
     (buffer-set-mark buf 1 2)  ; Set mark on different line
     (buffer-clear-mark buf)    ; Clear mark to trigger whole line kill

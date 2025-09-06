@@ -6,7 +6,7 @@
   
   ;; Test 1: Basic single-line selection (mark before point)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 8)  ; Point at 'r' in "world"
     (buffer-set-mark buf 0 3)   ; Mark at 'l' in "hello"
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -17,7 +17,7 @@
   
   ;; Test 2: Adjacent positions (mark before point)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)  ; Point at 's'
     (buffer-set-mark buf 0 1)   ; Mark at 'e'
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -26,7 +26,7 @@
   
   ;; Test 3: Selection at beginning of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("beginning"))
+    (setf (lines buf) (vector "beginning"))
     (buffer-set-point buf 0 3)  ; Point at 'i'
     (buffer-set-mark buf 0 0)   ; Mark at beginning
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -35,7 +35,7 @@
   
   ;; Test 4: Selection at end of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("ending"))
+    (setf (lines buf) (vector "ending"))
     (buffer-set-point buf 0 6)  ; Point at end
     (buffer-set-mark buf 0 3)   ; Mark at 'i'
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -50,7 +50,7 @@
   
   ;; Test 1: Basic single-line selection (point before mark)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 3)  ; Point at 'l' in "hello"
     (buffer-set-mark buf 0 8)   ; Mark at 'r' in "world"
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -61,7 +61,7 @@
   
   ;; Test 2: Adjacent positions (point before mark)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 1)  ; Point at 'e'
     (buffer-set-mark buf 0 2)   ; Mark at 's'
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -70,7 +70,7 @@
   
   ;; Test 3: Point at beginning, mark in middle
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("beginning"))
+    (setf (lines buf) (vector "beginning"))
     (buffer-set-point buf 0 0)  ; Point at beginning
     (buffer-set-mark buf 0 3)   ; Mark at 'i'
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -79,7 +79,7 @@
   
   ;; Test 4: Point in middle, mark at end
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("ending"))
+    (setf (lines buf) (vector "ending"))
     (buffer-set-point buf 0 3)  ; Point at 'i'
     (buffer-set-mark buf 0 6)   ; Mark at end
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -94,7 +94,7 @@
   
   ;; Test 1: Point and mark at same position
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test line"))
+    (setf (lines buf) (vector "test line"))
     (buffer-set-point buf 0 3)
     (buffer-set-mark buf 0 3)   ; Same position as point
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -104,7 +104,7 @@
   
   ;; Test 2: Point and mark at beginning
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 0)
     (buffer-set-mark buf 0 0)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -113,7 +113,7 @@
   
   ;; Test 3: Point and mark at end
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 4)
     (buffer-set-mark buf 0 4)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -128,7 +128,7 @@
   
   ;; Test 1: Selection across two adjacent lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 0 6)  ; Point in "first line"
     (buffer-set-mark buf 1 6)   ; Mark in "second line"
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -144,7 +144,7 @@
   
   ;; Test 2: Selection across three lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three" "line four"))
+    (setf (lines buf) (vector "line one" "line two" "line three" "line four"))
     (buffer-set-point buf 0 5)  ; Point in first line
     (buffer-set-mark buf 2 5)   ; Mark in third line
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -160,7 +160,7 @@
   
   ;; Test 3: Reverse multi-line selection (mark before point)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "second" "third"))
+    (setf (lines buf) (vector "first" "second" "third"))
     (buffer-set-point buf 2 3)  ; Point in third line
     (buffer-set-mark buf 0 2)   ; Mark in first line
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -173,7 +173,7 @@
   
   ;; Test 4: Selection from beginning of first line to end of last line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("start" "middle" "end"))
+    (setf (lines buf) (vector "start" "middle" "end"))
     (buffer-set-point buf 0 0)  ; Point at very beginning
     (buffer-set-mark buf 2 3)   ; Mark at end of last line
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -188,7 +188,7 @@
   
   ;; Test 1: No mark set
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("just cursor"))
+    (setf (lines buf) (vector "just cursor"))
     (buffer-set-point buf 0 5)
     ;; Explicitly clear mark
     (buffer-clear-mark buf)
@@ -200,7 +200,7 @@
   
   ;; Test 2: Cursor at beginning of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("beginning"))
+    (setf (lines buf) (vector "beginning"))
     (buffer-set-point buf 0 0)
     (buffer-clear-mark buf)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -210,7 +210,7 @@
   
   ;; Test 3: Cursor at end of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("ending"))
+    (setf (lines buf) (vector "ending"))
     (buffer-set-point buf 0 6)
     (buffer-clear-mark buf)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -220,7 +220,7 @@
   
   ;; Test 4: Cursor in multi-line buffer (different lines)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 1 4)  ; Cursor on line 1
     (buffer-clear-mark buf)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -241,7 +241,7 @@
   
   ;; Test 1: Empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (let ((rendered (render buf (make-instance 'web-ui))))
@@ -252,7 +252,7 @@
   
   ;; Test 2: Single empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #(""))
+    (setf (lines buf) (vector ""))
     (buffer-set-point buf 0 0)
     (buffer-clear-mark buf)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -262,7 +262,7 @@
   
   ;; Test 3: Multiple empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "" ""))
+    (setf (lines buf) (vector "" "" ""))
     (buffer-set-point buf 1 0)  ; Cursor on middle empty line
     (buffer-clear-mark buf)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -271,7 +271,7 @@
   
   ;; Test 4: Selection in empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("content" "" "more content"))
+    (setf (lines buf) (vector "content" "" "more content"))
     (buffer-set-point buf 1 0)  ; Point in empty line
     (buffer-set-mark buf 1 0)   ; Mark at same position
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -291,7 +291,7 @@
   
   ;; Test 6: Selection across empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("start" "" "" "end"))
+    (setf (lines buf) (vector "start" "" "" "end"))
     (buffer-set-point buf 0 2)
     (buffer-set-mark buf 3 1)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -300,7 +300,7 @@
   
   ;; Test 7: Lines with only whitespace
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("   " "    " "     "))
+    (setf (lines buf) (vector "   " "    " "     "))
     (buffer-set-point buf 1 2)
     (buffer-set-mark buf 1 1)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -309,7 +309,7 @@
   
   ;; Test 8: Special characters
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line with <tags> & \"quotes\""))
+    (setf (lines buf) (vector "line with <tags> & \"quotes\""))
     (buffer-set-point buf 0 12)
     (buffer-set-mark buf 0 17)  ; Select "<tags>"
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -327,7 +327,7 @@
   
   ;; Test 1: Multiple renders of same state should be identical
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test line"))
+    (setf (lines buf) (vector "test line"))
     (buffer-set-point buf 0 5)
     (buffer-set-mark buf 0 2)
     (let ((ui (make-instance 'web-ui))
@@ -338,7 +338,7 @@
   
   ;; Test 2: Rendered HTML should contain proper structure
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two"))
+    (setf (lines buf) (vector "line one" "line two"))
     (buffer-set-point buf 0 3)
     (buffer-set-mark buf 1 3)
     (let ((rendered (render buf (make-instance 'web-ui))))
@@ -352,7 +352,7 @@
   
   ;; Test 3: Line numbers should be correct
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "second" "third"))
+    (setf (lines buf) (vector "first" "second" "third"))
     (buffer-set-point buf 1 2)
     (buffer-clear-mark buf)
     (let ((rendered (render buf (make-instance 'web-ui))))

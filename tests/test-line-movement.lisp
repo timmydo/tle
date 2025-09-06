@@ -6,7 +6,7 @@
   
   ;; Test 1: Normal next-line movement preserving column
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line" "third line"))
+    (setf (lines buf) (vector "hello world" "second line" "third line"))
     (buffer-set-point buf 0 5)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -15,7 +15,7 @@
   
   ;; Test 2: Next-line to shorter line (should adjust column)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("long line here" "short" "another line"))
+    (setf (lines buf) (vector "long line here" "short" "another line"))
     (buffer-set-point buf 0 10)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -24,7 +24,7 @@
   
   ;; Test 3: Next-line from last line (should stay in place)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "last line"))
+    (setf (lines buf) (vector "first line" "last line"))
     (buffer-set-point buf 1 5)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -33,7 +33,7 @@
   
   ;; Test 4: Next-line to empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("content line" "" "more content"))
+    (setf (lines buf) (vector "content line" "" "more content"))
     (buffer-set-point buf 0 8)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -42,7 +42,7 @@
   
   ;; Test 5: Next-line from empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content line"))
+    (setf (lines buf) (vector "" "content line"))
     (buffer-set-point buf 0 0)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -51,7 +51,7 @@
   
   ;; Test 6: Next-line preserving column across multiple lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("column test" "also col test" "col test too"))
+    (setf (lines buf) (vector "column test" "also col test" "col test too"))
     (buffer-set-point buf 0 3)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -69,7 +69,7 @@
   
   ;; Test 1: Normal previous-line movement preserving column
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 2 5)
     (previous-line buf)
     (let ((point (buffer-get-point buf)))
@@ -78,7 +78,7 @@
   
   ;; Test 2: Previous-line to shorter line (should adjust column)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("short" "long line here" "another line"))
+    (setf (lines buf) (vector "short" "long line here" "another line"))
     (buffer-set-point buf 1 10)
     (previous-line buf)
     (let ((point (buffer-get-point buf)))
@@ -87,7 +87,7 @@
   
   ;; Test 3: Previous-line from first line (should stay in place)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line"))
+    (setf (lines buf) (vector "first line" "second line"))
     (buffer-set-point buf 0 5)
     (previous-line buf)
     (let ((point (buffer-get-point buf)))
@@ -96,7 +96,7 @@
   
   ;; Test 4: Previous-line to empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content line"))
+    (setf (lines buf) (vector "" "content line"))
     (buffer-set-point buf 1 8)
     (previous-line buf)
     (let ((point (buffer-get-point buf)))
@@ -105,7 +105,7 @@
   
   ;; Test 5: Previous-line from empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("content line" ""))
+    (setf (lines buf) (vector "content line" ""))
     (buffer-set-point buf 1 0)
     (previous-line buf)
     (let ((point (buffer-get-point buf)))
@@ -114,7 +114,7 @@
   
   ;; Test 6: Previous-line preserving column across multiple lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("column test" "also col test" "col test too"))
+    (setf (lines buf) (vector "column test" "also col test" "col test too"))
     (buffer-set-point buf 2 3)
     (previous-line buf)
     (let ((point (buffer-get-point buf)))
@@ -126,7 +126,7 @@
   
   ;; Test 7: Lines with varying lengths
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("a" "very long line with lots of content" "xyz"))
+    (setf (lines buf) (vector "a" "very long line with lots of content" "xyz"))
     (buffer-set-point buf 1 20)
     (previous-line buf)  ; Should go to end of shorter line
     (let ((point (buffer-get-point buf)))
@@ -144,7 +144,7 @@
   
   ;; Test 1: Next-line then previous-line should return to original position
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 1 3)
     (let ((original-point (buffer-get-point buf)))
       (next-line buf)
@@ -156,7 +156,7 @@
   
   ;; Test 2: Multiple next-line movements
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "second" "third" "fourth"))
+    (setf (lines buf) (vector "first" "second" "third" "fourth"))
     (buffer-set-point buf 0 2)
     (next-line buf)
     (next-line buf)
@@ -167,7 +167,7 @@
   
   ;; Test 3: Multiple previous-line movements
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "second" "third" "fourth"))
+    (setf (lines buf) (vector "first" "second" "third" "fourth"))
     (buffer-set-point buf 3 2)
     (previous-line buf)
     (previous-line buf)
@@ -178,7 +178,7 @@
   
   ;; Test 4: Column preservation across different line lengths
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("short" "very long line with content" "mid length" "x"))
+    (setf (lines buf) (vector "short" "very long line with content" "mid length" "x"))
     (buffer-set-point buf 1 15)  ; Position 15 in long line
     (next-line buf)  ; Should clip to end of shorter line
     (let ((point (buffer-get-point buf)))
@@ -196,7 +196,7 @@
   
   ;; Test 1: Single line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("only line"))
+    (setf (lines buf) (vector "only line"))
     (buffer-set-point buf 0 5)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -208,7 +208,7 @@
   
   ;; Test 2: Empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (buffer-set-point buf 0 0)
     (handler-case
         (progn
@@ -220,7 +220,7 @@
   
   ;; Test 3: Buffer with only empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "" ""))
+    (setf (lines buf) (vector "" "" ""))
     (buffer-set-point buf 1 0)
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -246,7 +246,7 @@
   
   ;; Test 5: End of line positions
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "longer line2" "line3"))
+    (setf (lines buf) (vector "line1" "longer line2" "line3"))
     (buffer-set-point buf 0 5)  ; At end of first line
     (next-line buf)
     (let ((point (buffer-get-point buf)))
@@ -264,7 +264,7 @@
   
   ;; Test 1: Character movement then line movement
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line" "third line"))
+    (setf (lines buf) (vector "hello world" "second line" "third line"))
     (buffer-set-point buf 0 0)
     (forward-char buf)
     (forward-char buf)
@@ -276,7 +276,7 @@
   
   ;; Test 2: Line movement then character movement
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 0 5)
     (next-line buf)     ; Should go to (1 5)
     (forward-char buf)  ; Should go to (1 6)
@@ -286,7 +286,7 @@
   
   ;; Test 3: Mixed movements creating a path
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abc" "def" "ghi"))
+    (setf (lines buf) (vector "abc" "def" "ghi"))
     (buffer-set-point buf 0 0)
     (forward-char buf)      ; (0 1)
     (next-line buf)         ; (1 1)

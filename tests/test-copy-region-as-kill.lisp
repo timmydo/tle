@@ -6,7 +6,7 @@
   
   ;; Test 1: Copy region within same line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world" "second line"))
+    (setf (lines buf) (vector "hello world" "second line"))
     (buffer-set-point buf 0 6)  ; At 'w' in "world"
     (buffer-set-mark buf 0 2)   ; At 'l' in "hello"
     ;; Capture the original state before copy
@@ -27,7 +27,7 @@
   
   ;; Test 2: Copy region across multiple lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 2 4)  ; At space in "line three"
     (buffer-set-mark buf 0 5)   ; At 'o' in "line one"
     ;; Capture the original state before copy
@@ -52,7 +52,7 @@
   
   ;; Test 3: Copy region from point to mark (reverse direction)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("abcdef"))
+    (setf (lines buf) (vector "abcdef"))
     (buffer-set-point buf 0 2)  ; At 'c'
     (buffer-set-mark buf 0 4)   ; At 'e'
     (let ((original-content (buffer-line buf 0)))
@@ -73,7 +73,7 @@
   
   ;; Test 1: Copy whole line in multi-line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first line" "second line" "third line"))
+    (setf (lines buf) (vector "first line" "second line" "third line"))
     (buffer-set-point buf 1 7)  ; At 'l' in "second line"
     (let ((original-lines (map 'vector #'copy-seq (lines buf)))
           (original-point (buffer-get-point buf)))
@@ -94,7 +94,7 @@
   
   ;; Test 2: Copy whole line in single-line buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("only line"))
+    (setf (lines buf) (vector "only line"))
     (buffer-set-point buf 0 4)  ; At 'l' in "only line"
     (let ((original-content (buffer-line buf 0)))
       (copy-region-as-kill buf)
@@ -114,13 +114,13 @@
   
   ;; Test 1: Empty buffer
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #())
+    (setf (lines buf) (vector ))
     (copy-region-as-kill buf)  ; Should handle gracefully
     (format t "✓ Test 1 passed: Empty buffer handling~%"))
   
   ;; Test 2: Single character line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("x"))
+    (setf (lines buf) (vector "x"))
     (buffer-set-point buf 0 0)
     (buffer-set-mark buf 0 1)
     (copy-region-as-kill buf)
@@ -130,7 +130,7 @@
   
   ;; Test 3: Copy empty region (mark and point at same position)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test line"))
+    (setf (lines buf) (vector "test line"))
     (buffer-set-point buf 0 4)
     (buffer-set-mark buf 0 4)  ; Same position as point
     (copy-region-as-kill buf)
@@ -140,7 +140,7 @@
   
   ;; Test 4: Copy at buffer boundaries
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("start" "middle" "end"))
+    (setf (lines buf) (vector "start" "middle" "end"))
     (buffer-set-point buf 2 3)  ; At end of last line
     (buffer-set-mark buf 0 0)   ; At start of first line
     (copy-region-as-kill buf)
@@ -156,7 +156,7 @@
   
   ;; Test 1: Copy operation should not create undo record
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 6)
     (buffer-set-mark buf 0 2)
     ;; Record initial undo state
@@ -169,7 +169,7 @@
   
   ;; Test 2: Multiple copy operations should not affect undo history
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line one" "line two" "line three"))
+    (setf (lines buf) (vector "line one" "line two" "line three"))
     (buffer-set-point buf 1 0)
     ;; Perform some operation that creates an undo record
     (insert-char buf #\X)
@@ -190,7 +190,7 @@
   
   ;; Test 3: Copy operation twice in a row
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test text"))
+    (setf (lines buf) (vector "test text"))
     (buffer-set-point buf 0 4)
     (buffer-set-mark buf 0 0)
     (let ((original-content (buffer-line buf 0))
@@ -216,7 +216,7 @@
   
   ;; Test 1: Mark clearing with region copy
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)
     (buffer-set-mark buf 0 0)
     (assert (not (null (buffer-get-mark buf))) () "Pre-test: mark should be set")
@@ -226,7 +226,7 @@
   
   ;; Test 2: No mark clearing when copying whole line (no mark set)
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test line"))
+    (setf (lines buf) (vector "test line"))
     (buffer-set-point buf 0 2)
     (assert (null (buffer-get-mark buf)) () "Pre-test: mark should be null")
     (copy-region-as-kill buf)

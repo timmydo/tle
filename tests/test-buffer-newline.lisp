@@ -6,7 +6,7 @@
   
   ;; Test 1: Insert newline at beginning of first line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 0)
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 3) () 
@@ -24,7 +24,7 @@
   
   ;; Test 2: Insert newline at beginning of middle line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("line1" "line2" "line3"))
+    (setf (lines buf) (vector "line1" "line2" "line3"))
     (buffer-set-point buf 1 0)
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 4) () 
@@ -50,7 +50,7 @@
   
   ;; Test 1: Insert newline in middle of word
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)  ; Between 'hello' and ' world'
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 2) () 
@@ -66,7 +66,7 @@
   
   ;; Test 2: Insert newline between words
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("one two three"))
+    (setf (lines buf) (vector "one two three"))
     (buffer-set-point buf 0 4)  ; Between 'one ' and 'two three'
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 2) () 
@@ -82,7 +82,7 @@
   
   ;; Test 3: Multiple newlines in sequence
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)  ; Between 'te' and 'st'
     (insert-newline buf)
     (insert-newline buf)
@@ -110,7 +110,7 @@
   
   ;; Test 1: Insert newline at end of line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello" "world"))
+    (setf (lines buf) (vector "hello" "world"))
     (buffer-set-point buf 0 5)  ; At end of "hello"
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 3) () 
@@ -128,7 +128,7 @@
   
   ;; Test 2: Insert newline at end of last line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("first" "last"))
+    (setf (lines buf) (vector "first" "last"))
     (buffer-set-point buf 1 4)  ; At end of "last"
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 3) () 
@@ -152,7 +152,7 @@
   
   ;; Test 1: Insert newline in empty line
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("" "content"))
+    (setf (lines buf) (vector "" "content"))
     (buffer-set-point buf 0 0)
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 3) () 
@@ -170,7 +170,7 @@
   
   ;; Test 2: Insert newline creating multiple empty lines
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("start"))
+    (setf (lines buf) (vector "start"))
     (buffer-set-point buf 0 5)  ; At end of "start"
     (insert-newline buf)
     (insert-newline buf)
@@ -201,7 +201,7 @@
   
   ;; Test 1: Combination of character and newline insertion
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello"))
+    (setf (lines buf) (vector "hello"))
     (buffer-set-point buf 0 5)  ; At end of "hello"
     (insert-char buf #\Space)
     (insert-char buf #\w)
@@ -223,7 +223,7 @@
   
   ;; Test 2: Splitting a long line with multiple words
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("The quick brown fox jumps"))
+    (setf (lines buf) (vector "The quick brown fox jumps"))
     (buffer-set-point buf 0 10)  ; Between 'brown' and ' fox'
     (insert-newline buf)
     (assert (= (buffer-line-count buf) 2) () 
@@ -245,7 +245,7 @@
   
   ;; Test 1: Mark is cleared after newline insertion
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("hello world"))
+    (setf (lines buf) (vector "hello world"))
     (buffer-set-point buf 0 5)  ; Between 'hello' and ' world'
     (buffer-set-mark buf 0 8)   ; Set a mark in the middle of 'world'
     (assert (buffer-get-mark buf) () "Test 1 setup failed: mark should be set")
@@ -262,7 +262,7 @@
   
   ;; Test 2: Mark remains cleared after multiple newline insertions
   (let ((buf (make-instance 'standard-buffer)))
-    (setf (lines buf) #("test"))
+    (setf (lines buf) (vector "test"))
     (buffer-set-point buf 0 2)  ; Between 'te' and 'st'
     (buffer-set-mark buf 0 3)   ; Set a mark
     (insert-newline buf)
