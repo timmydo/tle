@@ -8,7 +8,6 @@
    (width :initarg :width :accessor frame-width :initform 400)
    (height :initarg :height :accessor frame-height :initform 300)
    (z-index :initarg :z-index :accessor frame-z-index :initform 1000)
-   (focused :initarg :focused :accessor frame-focused :initform nil)
    )
   (:documentation "A frame with position, size, and handle"))
 
@@ -40,8 +39,6 @@
 (defgeneric update-frame-z-index-value (frame z-index)
   (:documentation "Update frame z-index"))
 
-(defgeneric update-frame-focus (frame focused)
-  (:documentation "Update frame focus state"))
 
 (defclass standard-frame (frame)
   ((%views :accessor frame-views)
@@ -74,9 +71,6 @@
   "Update frame z-index"
   (setf (frame-z-index frame) z-index))
 
-(defmethod update-frame-focus ((frame standard-frame) focused)
-  "Update frame focus state"
-  (setf (frame-focused frame) focused))
 
 (defmethod render-components ((frame standard-frame) (ui ui-implementation))
   "Render the components of a standard frame."

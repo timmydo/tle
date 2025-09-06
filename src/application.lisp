@@ -2,7 +2,8 @@
 
 (defclass application ()
   ((name :initarg :name :reader application-name)
-   (frames :initarg :frames :accessor application-frames :initform nil))
+   (frames :initarg :frames :accessor application-frames :initform nil)
+   (active-frame :initarg :active-frame :accessor application-active-frame :initform nil))
   (:documentation "An application with frames."))
 
 (defvar *applications* (make-hash-table :test 'equal))
@@ -63,8 +64,8 @@
     (when app
       (let* ((editor (make-standard-editor))
              (frame1 (make-standard-frame editor :title "Main Buffer" :x 50 :y 50 :width 500 :height 400)))
-        ;; Make the first frame focused by default
-        (setf (frame-focused frame1) t)
+        ;; Make the first frame active by default
+        (setf (application-active-frame app) frame1)
         (setf (application-frames app) (list frame1))
         app))))
 
@@ -72,6 +73,7 @@
 (export '(application
           application-name
           application-frames
+          application-active-frame
           register-application
           list-applications
           remove-application

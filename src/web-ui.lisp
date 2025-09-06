@@ -511,8 +511,8 @@
     (setf escaped (substitute-string escaped ">" "&gt;"))
     escaped))
 
-(defmethod render ((frame frame) (ui web-ui))
-  "Render a frame as HTML for web UI."
+(defun render-frame-with-focus (frame ui focused)
+  "Render a frame as an HTML window with focus information."
   (let* ((frame-content (if (typep frame 'standard-frame)
                            (render-components frame ui)
                            (escape-html (format nil "Frame: ~A" frame))))
@@ -523,7 +523,6 @@
          (width (if (typep frame 'standard-frame) (frame-width frame) 400))
          (height (if (typep frame 'standard-frame) (frame-height frame) 300))
          (z-index (if (typep frame 'standard-frame) (frame-z-index frame) 1000))
-         (focused (if (typep frame 'standard-frame) (frame-focused frame) nil))
          (focus-class (if focused "focused" "unfocused")))
     (format nil "<div class=\"window ~A\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
   <div class=\"window-header\">
@@ -533,6 +532,10 @@
   <div class=\"window-content\">~A</div>
   <div class=\"window-resizer\"></div>
 </div>" focus-class frame-id x y width height z-index title frame-content)))
+
+(defmethod render ((frame frame) (ui web-ui))
+  "Render a frame as HTML for web UI (without focus information)."
+  (render-frame-with-focus frame ui nil))
 
 (defmethod render ((app application) (ui web-ui))
   "Render an application as HTML with all its frames as draggable windows."
@@ -548,10 +551,11 @@
   <div class=\"window-resizer\"></div>
 </div>" 50 50 400 200 1000 (application-name app))
         ;; Render all frames as windows using their stored coordinates
-        (let ((window-html ""))
+        (let ((window-html "")
+              (active-frame (application-active-frame app)))
           (dolist (frame frames)
             (setf window-html
-                  (concatenate 'string window-html (render frame ui))))
+                  (concatenate 'string window-html (render-frame-with-focus frame ui (eq frame active-frame)))))
           window-html))))
 
 (defun write-line-crlf (stream &optional (line ""))
@@ -895,9 +899,8 @@
         (when (and new-editor (current-buffer new-editor))
           (setf (view-buffer view) (current-buffer new-editor)))
         (setf (frame-views new-frame) (list view))
-        ;; Unfocus all existing frames before adding the new focused frame
-        (dolist (frame (application-frames app))
-          (update-frame-focus frame nil))
+        ;; Set the new frame as the active frame (unfocusing any previous active frame)
+        (setf (application-active-frame app) new-frame)
         (push new-frame (application-frames app))
         (format t "Created new frame ~A in app ~A with z-index ~A. Total frames: ~A~%" 
                 frame-id app-name new-z-index (length (application-frames app)))))))
@@ -917,17 +920,17 @@
   (let ((app (get-application app-name)))
     (when app
       (dolist (frame (application-frames app))
-        (let ((frame-id (symbol-name (frame-id frame)))
-              (should-be-focused (string= (symbol-name (frame-id frame)) focused-frame-id)))
-          (update-frame-focus frame should-be-focused)
-          (when should-be-focused
-            (format t "Focused frame ~A~%" frame-id)))))))
+        (let ((frame-id (symbol-name (frame-id frame))))
+          (when (string= frame-id focused-frame-id)
+            (setf (application-active-frame app) frame)
+            (format t "Focused frame ~A~%" frame-id)
+            (return)))))))
 
 (defun get-focused-frame (app-name)
   "Get the currently focused frame in the application."
   (let ((app (get-application app-name)))
     (when app
-      (find-if #'frame-focused (application-frames app)))))
+      (application-active-frame app))))
 
 (defun handle-key-input (key-data &optional (app-name *default-application-name*))
   "Handle key input from POST request."
