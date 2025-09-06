@@ -755,7 +755,9 @@
                            #'live-isearch-backward))))
 
 ;; Register some basic commands
-(register-command "quit" (lambda (editor) (format t "Quit command executed~%")))
+(register-command "quit" (lambda (editor) 
+  (declare (ignore editor))
+  (quit-tle)))
 (register-command "save-buffer" (lambda (editor) (save-buffer-command editor)))
 (register-command "save-buffer-as" 
   (lambda (editor) 

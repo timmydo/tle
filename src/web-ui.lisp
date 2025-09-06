@@ -10,6 +10,14 @@
 (defvar *web-ui-instance* nil)
 (defvar *server-running* nil)
 
+(defun quit-tle ()
+  "Quit TLE without prompting."
+  (format t "Quitting TLE...~%")
+  (setf *server-running* nil)
+  (bt:make-thread 
+   (lambda () (sleep 0.5) (uiop:quit 0)) 
+   :name "quit-thread"))
+
 (defun get-buffer-text (buffer)
   "Constructs a single string from the buffer's lines."
   (let ((lines (loop for i from 0 below (buffer-line-count buffer)
@@ -1114,6 +1122,10 @@
           ((and ctrl (string= key "v"))
            (yank buffer)
            (format t "Ctrl-V: Yank from kill ring~%"))
+          ((and ctrl (string= key "q"))
+           ;; Quit without prompting
+           (format t "Ctrl-Q: Quitting TLE...~%")
+           (quit-tle))
           ((and alt (string= key "v"))
            (yank-pop buffer)
            (format t "Alt-V: Yank pop (cycle kill ring)~%"))
