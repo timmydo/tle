@@ -245,6 +245,12 @@
                 <div class=\"menu-option\" onclick=\"createNewWindow()\">New Window</div>
             </div>
         </div>
+        <div class=\"menu-item\" id=\"system-menu\">
+            System
+            <div class=\"menu-dropdown\" id=\"system-dropdown\">
+                <div class=\"menu-option\" onclick=\"quitApplication()\">Quit</div>
+            </div>
+        </div>
     </div>
     <div id=\"app-container\">~A</div>
     <script>
@@ -420,6 +426,21 @@
             hideAllMenus();
         }
         
+        function quitApplication() {
+            if (confirm('Are you sure you want to quit TLE?')) {
+                fetch('/quit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                });
+                hideAllMenus();
+                // Show a message to the user
+                setTimeout(() => {
+                    alert('TLE is shutting down. Please close this window.');
+                }, 500);
+            }
+        }
+        
         function showMenu(menuId) {
             hideAllMenus();
             document.getElementById(menuId).classList.add('show');
@@ -497,6 +518,16 @@
                 hideAllMenus();
             } else {
                 showMenu('file-dropdown');
+            }
+        });
+        
+        document.getElementById('system-menu').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdown = document.getElementById('system-dropdown');
+            if (dropdown.classList.contains('show')) {
+                hideAllMenus();
+            } else {
+                showMenu('system-dropdown');
             }
         });
     </script>
@@ -689,6 +720,9 @@
                     ((and (string= method "POST") (string= path "/frame-focus"))
                      (handle-frame-focus-post client-stream body app-name)
                      :close)
+                    ((and (string= method "POST") (string= path "/quit"))
+                     (handle-quit-post client-stream body app-name)
+                     :close)
                     (t
                      (send-404-response client-stream)
                      :close)))))
@@ -809,6 +843,20 @@
            (frame-id (jsown:val data "frameId")))
       (update-application-frame-focus app-name frame-id)))
   (send-http-response client-stream "HTTP/1.1 200 OK"))
+
+(defun handle-quit-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle quit application request."
+  (declare (ignore body app-name))
+  (format t "Quit request received. Shutting down TLE...~%")
+  (send-http-response client-stream "HTTP/1.1 200 OK")
+  ;; Schedule shutdown in a separate thread to allow response to be sent
+  (bt:make-thread 
+   (lambda ()
+     (sleep 0.5)  ; Give time for response to be sent
+     (setf *server-running* nil)
+     (format t "Server stopped. Exiting...~%")
+     (uiop:quit 0))
+   :name "shutdown-thread"))
 
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."
