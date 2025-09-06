@@ -284,6 +284,38 @@
                 bringToFront(windowElement);
                 setWindowFocus(windowElement);
             });
+            
+            // Handle clicks in editor content area
+            const editorContent = windowElement.querySelector('.editor-content');
+            if (editorContent) {
+                editorContent.addEventListener('click', (e) => {
+                    // Only handle clicks that aren't being handled by dragging/resizing
+                    if (draggedWindow || resizedWindow) return;
+                    
+                    // Look for click data attributes in the clicked element or its parents
+                    let clickTarget = e.target;
+                    let line = null;
+                    let col = null;
+                    
+                    // Search up the DOM tree for data-click attributes
+                    while (clickTarget && clickTarget !== editorContent) {
+                        if (clickTarget.hasAttribute && clickTarget.hasAttribute('data-click-line')) {
+                            line = parseInt(clickTarget.getAttribute('data-click-line'));
+                            col = parseInt(clickTarget.getAttribute('data-click-col'));
+                            break;
+                        }
+                        clickTarget = clickTarget.parentElement;
+                    }
+                    
+                    // Only send click if we found position data
+                    if (line !== null && col !== null) {
+                        const frameId = windowElement.dataset.frameId;
+                        sendClick(frameId, line, col);
+                    }
+                    
+                    e.stopPropagation();
+                });
+            }
         }
         
         function startDrag(e) {
@@ -394,6 +426,18 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(keyInfo)
+            });
+        }
+        
+        function sendClick(frameId, line, col) {
+            fetch('/click', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    frameId: frameId,
+                    line: line,
+                    col: col
+                })
             });
         }
         
@@ -731,6 +775,9 @@
                     ((and (string= method "POST") (string= path "/quit"))
                      (handle-quit-post client-stream body app-name)
                      :close)
+                    ((and (string= method "POST") (string= path "/click"))
+                     (handle-click-post client-stream body app-name)
+                     :close)
                     (t
                      (send-404-response client-stream)
                      :close)))))
@@ -865,6 +912,39 @@
      (format t "Server stopped. Exiting...~%")
      (uiop:quit 0))
    :name "shutdown-thread"))
+
+(defun handle-click-post (client-stream body &optional (app-name *default-application-name*))
+  "Handle mouse click request to position cursor."
+  (when body
+    (let* ((data (jsown:parse body))
+           (frame-id (jsown:val data "frameId"))
+           (line (jsown:val data "line"))
+           (col (jsown:val data "col")))
+      (handle-mouse-click app-name frame-id line col)))
+  (send-http-response client-stream "HTTP/1.1 200 OK"))
+
+(defun handle-mouse-click (app-name frame-id line-number column)
+  "Handle a mouse click by positioning the cursor."
+  (let* ((app (get-application app-name))
+         (frame (when app
+                  (find-if (lambda (f)
+                            (string= (symbol-name (frame-id f)) frame-id))
+                          (application-frames app))))
+         (editor (when frame (frame-editor frame)))
+         (buffer (when editor (current-buffer editor))))
+    (when buffer
+      ;; Use the line and column data directly from HTML data attributes
+      (let ((max-lines (buffer-line-count buffer)))
+        ;; Clamp line number to valid range
+        (setf line-number (max 0 (min line-number (1- max-lines))))
+        ;; Clamp column to line length
+        (let ((line-text (buffer-line buffer line-number)))
+          (setf column (max 0 (min column (length line-text))))
+          ;; Set the cursor position
+          (buffer-set-point buffer line-number column)
+          (format t "Click positioned cursor at line ~A, column ~A~%" line-number column)))))
+  ;; Broadcast update to refresh the display
+  (broadcast-update app-name))
 
 (defun send-content-update (client-stream &optional (app-name *default-application-name*))
   "Send current application content to client via SSE."

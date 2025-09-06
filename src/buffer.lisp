@@ -1549,9 +1549,11 @@
           ;; Handle end of line positions (cursor/mark at end)
           ((and (= i (length line-text)) (or is-cursor is-mark))
            (setf result (concatenate 'string result
-                                     (format nil "<span class=\"~A\">&nbsp;</span>"
+                                     (format nil "<span class=\"~A\" data-click-line=\"~A\" data-click-col=\"~A\">&nbsp;</span>"
                                              (cond (is-cursor "cursor")
-                                                   (is-mark "mark"))))))
+                                                   (is-mark "mark"))
+                                             line-number
+                                             i))))
           ;; Handle characters with various combinations of states
           ((and char (or in-selection is-cursor is-mark in-isearch-match))
            (let ((classes (remove nil (list (when in-selection "selection")
@@ -1559,12 +1561,18 @@
                                              (when is-mark "mark")
                                              (when in-isearch-match "isearch-match")))))
              (setf result (concatenate 'string result
-                                       (format nil "<span class=\"~{~A~^ ~}\">~A</span>"
+                                       (format nil "<span class=\"~{~A~^ ~}\" data-click-line=\"~A\" data-click-col=\"~A\">~A</span>"
                                                classes
+                                               line-number
+                                               i
                                                (escape-html-char char))))))
           ;; Regular character
           (char
-           (setf result (concatenate 'string result (escape-html-char char)))))))
+           (setf result (concatenate 'string result 
+                                     (format nil "<span data-click-line=\"~A\" data-click-col=\"~A\">~A</span>"
+                                             line-number
+                                             i
+                                             (escape-html-char char))))))))
     result))
 
 (defun escape-html-char (char)
@@ -1598,8 +1606,10 @@
                                     (point-col (second point))
                                     (mark-line (when mark (first mark)))
                                     (mark-col (when mark (second mark))))
-                                (format nil "<div class=\"line\"><span class=\"line-number\">~3D</span><span class=\"line-content\">~A</span></div>"
+                                (format nil "<div class=\"line\"><span class=\"line-number\">~3D</span><span class=\"line-content\" data-click-line=\"~A\" data-click-col=\"~A\">~A</span></div>"
                                         (1+ i)
+                                        i
+                                        (length line-text)
                                         (render-line-with-markers line-text i point-line point-col mark-line mark-col buffer))))))
       "<div class=\"buffer-content\">Empty buffer</div>"))
 
