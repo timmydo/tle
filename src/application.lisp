@@ -2,9 +2,8 @@
 
 (defclass application ()
   ((name :initarg :name :reader application-name)
-   (frames :initarg :frames :accessor application-frames :initform nil)
-   (editor :initarg :editor :accessor application-editor :initform nil))
-  (:documentation "An application with frames and an editor."))
+   (frames :initarg :frames :accessor application-frames :initform nil))
+  (:documentation "An application with frames."))
 
 (defvar *applications* (make-hash-table :test 'equal))
 (defvar *default-application-name* "default")
@@ -14,16 +13,14 @@
   (or (gethash app-name *applications*)
       (when (string= app-name *default-application-name*)
         (let ((app (make-instance 'application 
-                                  :name app-name
-                                  :editor *editor-instance*)))
+                                  :name app-name)))
           (setf (gethash app-name *applications*) app)
           app))))
 
-(defun register-application (app-name editor &optional frames)
-  "Register a new application with the given name, editor, and optional frames."
+(defun register-application (app-name &optional frames)
+  "Register a new application with the given name and optional frames."
   (let ((app (make-instance 'application
                             :name app-name
-                            :editor editor
                             :frames (or frames nil))))
     (setf (gethash app-name *applications*) app)
     app))
@@ -64,8 +61,10 @@
   "Create sample frames for testing the application."
   (let ((app (get-application app-name)))
     (when app
-      (let* ((editor (application-editor app))
+      (let* ((editor (make-standard-editor))
              (frame1 (make-standard-frame editor :title "Main Buffer" :x 50 :y 50 :width 500 :height 400)))
+        ;; Make the first frame focused by default
+        (setf (frame-focused frame1) t)
         (setf (application-frames app) (list frame1))
         app))))
 
@@ -73,7 +72,6 @@
 (export '(application
           application-name
           application-frames
-          application-editor
           register-application
           list-applications
           remove-application

@@ -536,22 +536,17 @@
 
 (defmethod render ((app application) (ui web-ui))
   "Render an application as HTML with all its frames as draggable windows."
-  (let ((frames (application-frames app))
-        (editor (application-editor app)))
+  (let ((frames (application-frames app)))
     (if (null frames)
-        ;; If no frames, create a default window with the current editor
-        (let* ((content (if editor (render editor ui) "No content"))
-               (frame-id "default-frame")
-               (title (format nil "~A - Buffer" (application-name app)))
-               (focus-class "focused"))
-          (format nil "<div class=\"window ~A\" data-frame-id=\"~A\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
+        ;; If no frames, show empty message
+        (format nil "<div class=\"window focused\" data-frame-id=\"no-frames\" style=\"left: ~Apx; top: ~Apx; width: ~Apx; height: ~Apx; z-index: ~A;\">
   <div class=\"window-header\">
-    <span>~A</span>
+    <span>~A - No frames</span>
     <button class=\"window-close-btn\" title=\"Close\">&#215;</button>
   </div>
-  <div class=\"window-content\">~A</div>
+  <div class=\"window-content\">Use File > New Window to create a frame</div>
   <div class=\"window-resizer\"></div>
-</div>" focus-class frame-id 50 50 600 400 1000 title content))
+</div>" 50 50 400 200 1000 (application-name app))
         ;; Render all frames as windows using their stored coordinates
         (let ((window-html ""))
           (dolist (frame frames)
@@ -943,12 +938,9 @@
         (meta (jsown:val key-data "meta")))
     (format t "Key event received for app '~A'. Key: '~A', Ctrl: ~A, Alt: ~A, Meta: ~A~%" app-name key ctrl alt meta)
     
-    ;; Get the current buffer for the focused frame, fall back to application editor
-    (let* ((app (get-application app-name))
-           (focused-frame (get-focused-frame app-name))
-           (editor (if focused-frame 
-                      (frame-editor focused-frame)
-                      (when app (application-editor app))))
+    ;; Get the current buffer for the focused frame only
+    (let* ((focused-frame (get-focused-frame app-name))
+           (editor (when focused-frame (frame-editor focused-frame)))
            (buffer (when editor (current-buffer editor))))
       
       (when editor
@@ -1175,8 +1167,7 @@
   (setf *web-ui-instance* ui)
   ;; Initialize default application
   (let ((default-app (make-instance 'application 
-                                    :name *default-application-name*
-                                    :editor editor)))
+                                    :name *default-application-name*)))
     (setf (gethash *default-application-name* *applications*) default-app)
     ;; Create sample frames for testing
     (create-sample-frames *default-application-name*))
