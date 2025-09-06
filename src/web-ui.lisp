@@ -890,8 +890,7 @@
                                        :y y
                                        :width 400
                                        :height 300
-                                       :z-index new-z-index
-                                       :focused t))
+                                       :z-index new-z-index))
              (view (make-instance 'standard-view)))
         ;; Set up the view for the frame
         (setf (view-point view) (cons 0 0))
