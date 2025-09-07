@@ -2,7 +2,7 @@
 ;;; This test helps catch issues like the let vs let* bug we just fixed
 
 (load "../tle.asd")
-(ql:quickload :tle :silent t)
+(asdf:load-system :tle)
 
 (in-package :tle)
 

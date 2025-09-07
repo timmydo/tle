@@ -1,5 +1,5 @@
 ;; Test isearch editor integration
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (defpackage #:test-isearch-editor-integration
   (:use #:cl)

@@ -1,5 +1,5 @@
 ;; Test isearch highlighting functionality
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (defpackage #:test-isearch-highlighting
   (:use #:cl)

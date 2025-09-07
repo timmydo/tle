@@ -1,7 +1,7 @@
 ;;;; test-minibuffer-path.lisp
 ;;;; Test the exact minibuffer path that web UI uses
 
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (in-package :tle)
 

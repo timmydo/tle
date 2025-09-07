@@ -1,7 +1,7 @@
 ;;;; test-query-replace-enter-bug.lisp
 ;;;; Test to reproduce the Enter key bug in query-replace
 
-(ql:quickload :tle :silent t)
+(asdf:load-system :tle)
 
 (use-package :tle)
 

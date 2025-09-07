@@ -1,7 +1,7 @@
 ;;;; test-enter-fix.lisp
 ;;;; Simple test to verify Enter key fix works
 
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (in-package :tle)
 

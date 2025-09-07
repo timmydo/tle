@@ -1,7 +1,7 @@
 ;;;; test-reproduce-line-text-error.lisp
 ;;;; Try to reproduce the exact LINE-TEXT error
 
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (in-package :tle)
 

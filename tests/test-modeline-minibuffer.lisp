@@ -1,4 +1,4 @@
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (defun test-modeline-info ()
   "Test that modeline info is correctly generated."

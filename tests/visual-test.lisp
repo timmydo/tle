@@ -1,4 +1,4 @@
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (defun test-visual-output ()
   "Test visual output of modeline and minibuffer HTML."

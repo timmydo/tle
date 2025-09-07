@@ -1,7 +1,7 @@
 ;;;; test-interactive-query-replace.lisp
 ;;;; Test suite for interactive query-replace functionality
 
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (use-package :tle)
 

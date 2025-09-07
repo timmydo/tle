@@ -1,7 +1,7 @@
 ;;;; test-enter-key-comprehensive.lisp
 ;;;; Comprehensive test for Enter key behavior in query-replace
 
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (in-package :tle)
 

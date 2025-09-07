@@ -1,7 +1,7 @@
 ;;;; test-query-replace-full-flow.lisp
 ;;;; Test to replicate the full query-replace flow and the LINE-TEXT error
 
-(ql:quickload :tle)
+(asdf:load-system :tle)
 
 (in-package :tle)
 
