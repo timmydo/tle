@@ -184,6 +184,9 @@
             
             ;; Clear the REPL buffer for next input
             (clear-buffer buffer)
+            
+            ;; Broadcast update to all clients to refresh the display
+            (broadcast-update)
             result))))))
 
 (defun render-modeline (modeline-info)

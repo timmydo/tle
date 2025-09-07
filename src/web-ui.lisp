@@ -220,12 +220,15 @@
             height: 100%;
         }
         .repl-editor-section {
-            flex: 0 0 60%;
-            border-bottom: 2px solid #5c6370;
+            flex: 0 0 auto;
+            height: 3em;
+            border-top: 2px solid #5c6370;
+            order: 2;
         }
         .repl-object-section {
             flex: 1;
             overflow-y: auto;
+            order: 1;
         }
         .rich-object-view {
             height: 100%;
