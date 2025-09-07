@@ -212,6 +212,11 @@
     (buffer-set-point buf 0 0)
     buf))
 
+(defun clear-buffer (buffer)
+  "Clear all content from buffer and reset to single empty line."
+  (setf (lines buffer) (make-array 1 :initial-element ""))
+  (buffer-set-point buffer 0 0))
+
 (defmethod buffer-line-count ((buffer standard-buffer))
   (length (lines buffer)))
 

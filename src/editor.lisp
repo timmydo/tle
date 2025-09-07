@@ -108,15 +108,48 @@
             (render-minibuffer editor ui))))
 
 (defclass repl-editor (standard-editor)
-  ()
+  ((rich-object-view :accessor repl-editor-rich-object-view :initarg :rich-object-view :initform nil))
   (:documentation "A specialized editor for REPL use without modeline or minibuffer display."))
 
-(defun make-repl-editor ()
-  "Create a REPL editor with an empty buffer."
-  (let ((e (make-instance 'repl-editor)))
+(defun make-repl-editor (&optional rich-object-view)
+  "Create a REPL editor with an empty buffer and optional rich-object-view."
+  (let ((e (make-instance 'repl-editor :rich-object-view rich-object-view)))
     (setf (buffers e) (list (make-empty-buffer "*repl*")))
     (setf (editor-modes e) (list (make-repl-mode) (make-normal-mode)))
     e))
+
+(defun render-repl-buffer-with-prompt (buffer ui)
+  "Render a REPL buffer with package prompt before the first line."
+  (if (slot-boundp buffer '%lines)
+      (let ((point (buffer-get-point buffer))
+            (mark (buffer-get-mark buffer))
+            (package-name (package-name *package*)))
+        ;; Validate point structure
+        (unless (and point (listp point) (>= (length point) 2) 
+                     (numberp (first point)) (numberp (second point)))
+          (error "Invalid point structure: ~A" point))
+        ;; Validate mark structure if it exists
+        (when (and mark (not (and (listp mark) (>= (length mark) 2) 
+                                  (numberp (first mark)) (numberp (second mark)))))
+          (error "Invalid mark structure: ~A" mark))
+        
+        (format nil "<div class=\"buffer-content\">~A~{~A~^~%~}</div>"
+                ;; Add package prompt before first line
+                (if (> (buffer-line-count buffer) 0)
+                    (format nil "<div class=\"line\"><span class=\"repl-prompt\">~A&gt; </span></div>~%"
+                            package-name)
+                    "")
+                (loop for i from 0 below (buffer-line-count buffer)
+                      collect (let ((line-text (buffer-line buffer i))
+                                    (point-line (first point))
+                                    (point-col (second point))
+                                    (mark-line (when mark (first mark)))
+                                    (mark-col (when mark (second mark))))
+                                (format nil "<div class=\"line\"><span class=\"line-content\" data-click-line=\"~A\" data-click-col=\"~A\">~A</span></div>"
+                                        i
+                                        (length line-text)
+                                        (render-line-with-markers line-text i point-line point-col mark-line mark-col buffer))))))
+      "<div class=\"buffer-content\">Empty buffer</div>"))
 
 (defmethod render ((editor repl-editor) (ui ui-implementation))
   "Render a REPL editor component without modeline and minibuffer or line numbers."
@@ -124,20 +157,34 @@
     (format nil "<div class=\"editor-pane\">~A</div>"
             (if current-buf
                 (format nil "<div class=\"editor-content\">~A</div>"
-                        (render-buffer-with-options current-buf ui nil))
+                        (render-repl-buffer-with-prompt current-buf ui))
                 "<div class=\"editor-content\">No buffer available</div>"))))
 
-(defun evaluate-repl-buffer (editor)
-  "Evaluate the contents of the REPL buffer and print to terminal."
+(defun evaluate-repl-buffer (editor rich-object-view)
+  "Evaluate the contents of the REPL buffer in the current Lisp image."
   (let ((buffer (current-buffer editor)))
     (when buffer
-      (let ((content (get-buffer-text buffer)))
-        (format t "=== REPL Evaluation ===~%")
-        (format t "Input:~%~A~%" content)
-        (format t "=== End Evaluation ===~%")
-        ;; TODO: Add actual Lisp evaluation here
-        ;; For now, just echo the content
-        content))))
+      (let* ((content (get-buffer-text buffer))
+             (trimmed-content (string-trim '(#\Space #\Tab #\Newline) content)))
+        (when (and trimmed-content (not (string= trimmed-content "")))
+          (let ((result nil)
+                (error-occurred nil))
+            (handler-case
+                (setf result (eval (read-from-string trimmed-content)))
+              (error (e)
+                (setf result (format nil "Error: ~A" e))
+                (setf error-occurred t)))
+            
+            ;; Create evaluation object and add to rich-object-view
+            (let ((evaluation (make-instance 'repl-evaluation
+                                           :command trimmed-content
+                                           :result result
+                                           :error-p error-occurred)))
+              (add-object rich-object-view evaluation))
+            
+            ;; Clear the REPL buffer for next input
+            (clear-buffer buffer)
+            result))))))
 
 (defun render-modeline (modeline-info)
   "Render the modeline showing filename, line, and column."

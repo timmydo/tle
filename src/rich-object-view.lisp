@@ -1,5 +1,12 @@
 (in-package :tle)
 
+(defclass repl-evaluation ()
+  ((command :accessor evaluation-command :initarg :command :initform "")
+   (result :accessor evaluation-result :initarg :result :initform nil)
+   (error-p :accessor evaluation-error-p :initarg :error-p :initform nil)
+   (timestamp :accessor evaluation-timestamp :initarg :timestamp :initform (get-universal-time)))
+  (:documentation "Represents a REPL evaluation with command, result, and error status."))
+
 (defclass rich-object-view ()
   ((objects :accessor rich-object-view-objects :initform '())
    (title :accessor rich-object-view-title :initform "Objects" :initarg :title))
@@ -40,6 +47,20 @@
   "Render lists with structure."
   (format nil "<div class=\"object-item list-object\"><pre>~A</pre></div>" 
           (html-escape (prin1-to-string object))))
+
+(defmethod render-object-as-html ((evaluation repl-evaluation))
+  "Render a REPL evaluation with command and result."
+  (let ((command (html-escape (evaluation-command evaluation)))
+        (result (html-escape (prin1-to-string (evaluation-result evaluation))))
+        (error-class (if (evaluation-error-p evaluation) " error-result" "")))
+    (format nil 
+            "<div class=\"object-item repl-evaluation~A\">
+               <div class=\"eval-command\"><span class=\"command-prompt\">&gt;</span> ~A</div>
+               <div class=\"eval-result\">~A</div>
+             </div>"
+            error-class
+            command
+            result)))
 
 (defmethod render ((view rich-object-view) (ui ui-implementation))
   "Render the rich-object-view as HTML."

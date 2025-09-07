@@ -11,7 +11,9 @@
       (cond
         ;; Enter for REPL evaluation (without shift)
         ((and (string= key "Enter") (not shift))
-         (evaluate-repl-buffer editor)
+         (when (and (typep editor 'repl-editor) 
+                    (repl-editor-rich-object-view editor))
+           (evaluate-repl-buffer editor (repl-editor-rich-object-view editor)))
          (format t "Enter: Evaluated REPL buffer~%")
          t)
         

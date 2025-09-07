@@ -178,6 +178,12 @@
             user-select: none;
             flex-shrink: 0;
         }
+        .repl-prompt {
+            color: #98c379;
+            font-weight: bold;
+            user-select: none;
+            margin-right: 4px;
+        }
         .line-content {
             flex: 1;
             padding-left: 5px;
@@ -252,6 +258,33 @@
         }
         .list-object {
             border-left-color: #c678dd;
+        }
+        .repl-evaluation {
+            border-left-color: #56b6c2;
+            margin-bottom: 12px;
+        }
+        .repl-evaluation.error-result {
+            border-left-color: #e06c75;
+            background-color: #3c2b2b;
+        }
+        .eval-command {
+            font-family: monospace;
+            color: #abb2bf;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        .command-prompt {
+            color: #98c379;
+            margin-right: 4px;
+        }
+        .eval-result {
+            font-family: monospace;
+            color: #e5c07b;
+            padding: 4px 0;
+            white-space: pre-wrap;
+        }
+        .error-result .eval-result {
+            color: #e06c75;
         }
         .editor-content {
             flex: 1;
@@ -1249,8 +1282,8 @@
                                         :key #'frame-z-index)
                                  1000))
              (new-z-index (1+ highest-z-index))
-             (new-editor (make-repl-editor))
              (rich-object-view (make-instance 'rich-object-view :title "Results"))
+             (new-editor (make-repl-editor rich-object-view))
              (new-frame (make-instance 'repl-frame
                                        :id frame-id
                                        :title title
