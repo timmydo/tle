@@ -103,18 +103,18 @@
   (:documentation "A specialized editor for REPL use without modeline or minibuffer display."))
 
 (defun make-repl-editor ()
-  "Create a REPL editor."
+  "Create a REPL editor with an empty buffer."
   (let ((e (make-instance 'repl-editor)))
-    (setf (buffers e) (list (make-standard-buffer "*repl*")))
+    (setf (buffers e) (list (make-empty-buffer "*repl*")))
     e))
 
 (defmethod render ((editor repl-editor) (ui ui-implementation))
-  "Render a REPL editor component without modeline and minibuffer."
+  "Render a REPL editor component without modeline and minibuffer or line numbers."
   (let ((current-buf (current-buffer editor)))
     (format nil "<div class=\"editor-pane\">~A</div>"
             (if current-buf
                 (format nil "<div class=\"editor-content\">~A</div>"
-                        (render current-buf ui))
+                        (render-buffer-with-options current-buf ui nil))
                 "<div class=\"editor-content\">No buffer available</div>"))))
 
 (defun evaluate-repl-buffer (editor)

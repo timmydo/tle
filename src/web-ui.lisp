@@ -49,7 +49,7 @@
             top: 0;
             left: 0;
             right: 0;
-            z-index: 1000;
+            z-index: 2000;
             user-select: none;
         }
         .menu-item {
@@ -70,7 +70,7 @@
             min-width: 150px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
             display: none;
-            z-index: 1001;
+            z-index: 2001;
         }
         .menu-dropdown.show {
             display: block;
@@ -1249,7 +1249,7 @@
                                         :key #'frame-z-index)
                                  1000))
              (new-z-index (1+ highest-z-index))
-             (new-editor (make-standard-editor))
+             (new-editor (make-repl-editor))
              (rich-object-view (make-instance 'rich-object-view :title "Results"))
              (new-frame (make-instance 'repl-frame
                                        :id frame-id
@@ -1474,13 +1474,18 @@
                                       (save-buffer-as buffer (string-trim " " file-path))))))
            (format t "Ctrl-Alt-W: Save buffer as (C-x C-w equivalent)~%"))
           
-          ;; Ctrl+Enter for REPL evaluation (only in REPL editors)
-          ((and ctrl (string= key "Enter") (typep editor 'repl-editor))
+          ;; Enter for REPL evaluation (only in REPL editors)
+          ((and (string= key "Enter") (typep editor 'repl-editor) (not shift))
            (evaluate-repl-buffer editor)
-           (format t "Ctrl+Enter: Evaluated REPL buffer~%"))
+           (format t "Enter: Evaluated REPL buffer~%"))
           
-          ;; Enter key for newline insertion
-          ((string= key "Enter")
+          ;; Shift+Enter for newline insertion in REPL editors
+          ((and shift (string= key "Enter") (typep editor 'repl-editor))
+           (insert-newline buffer)
+           (format t "Shift+Enter: Inserted newline in REPL~%"))
+          
+          ;; Enter key for newline insertion in regular editors
+          ((and (string= key "Enter") (not (typep editor 'repl-editor)))
            (insert-newline buffer)
            (format t "Inserted newline~%"))
           

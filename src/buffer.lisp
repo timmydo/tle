@@ -1585,8 +1585,8 @@
     (t (string char))))
 
 
-(defmethod render ((buffer standard-buffer) (ui ui-implementation))
-  "Render a standard buffer with HTML line numbers, point cursor, and mark."
+(defun render-buffer-with-options (buffer ui show-line-numbers)
+  "Render a buffer with optional line number display."
   (if (slot-boundp buffer '%lines)
       (let ((point (buffer-get-point buffer))
             (mark (buffer-get-mark buffer)))
@@ -1606,12 +1606,21 @@
                                     (point-col (second point))
                                     (mark-line (when mark (first mark)))
                                     (mark-col (when mark (second mark))))
-                                (format nil "<div class=\"line\"><span class=\"line-number\">~3D</span><span class=\"line-content\" data-click-line=\"~A\" data-click-col=\"~A\">~A</span></div>"
-                                        (1+ i)
-                                        i
-                                        (length line-text)
-                                        (render-line-with-markers line-text i point-line point-col mark-line mark-col buffer))))))
+                                (if show-line-numbers
+                                    (format nil "<div class=\"line\"><span class=\"line-number\">~3D</span><span class=\"line-content\" data-click-line=\"~A\" data-click-col=\"~A\">~A</span></div>"
+                                            (1+ i)
+                                            i
+                                            (length line-text)
+                                            (render-line-with-markers line-text i point-line point-col mark-line mark-col buffer))
+                                    (format nil "<div class=\"line\"><span class=\"line-content\" data-click-line=\"~A\" data-click-col=\"~A\">~A</span></div>"
+                                            i
+                                            (length line-text)
+                                            (render-line-with-markers line-text i point-line point-col mark-line mark-col buffer)))))))
       "<div class=\"buffer-content\">Empty buffer</div>"))
+
+(defmethod render ((buffer standard-buffer) (ui ui-implementation))
+  "Render a standard buffer with HTML line numbers, point cursor, and mark."
+  (render-buffer-with-options buffer ui t))
 
 ;; Word boundary functions for kill-word
 (defun word-char-p (char)
