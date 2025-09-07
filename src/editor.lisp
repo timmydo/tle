@@ -9,6 +9,7 @@
 
 (defclass standard-editor (editor)
   ((%buffers :accessor buffers)
+   (%modes :accessor editor-modes :initform nil)
    (%minibuffer :accessor minibuffer :initform nil)
    (%minibuffer-active :accessor minibuffer-active-p :initform nil)
    (%minibuffer-prompt :accessor minibuffer-prompt :initform "")
@@ -30,6 +31,7 @@
 (defun make-standard-editor ()
   (let ((e (make-instance 'standard-editor)))
     (setf (buffers e) (list (make-standard-buffer "*scratch*")))
+    (setf (editor-modes e) (list (make-normal-mode)))
     e))
 
 (defmethod editor-buffers ((editor standard-editor))
@@ -38,6 +40,13 @@
 (defun current-buffer (editor)
   "Get the current buffer from the editor."
   (first (buffers editor)))
+
+(defun handle-key-with-modes (editor key ctrl alt shift meta)
+  "Process key through editor's modes in order until one handles it."
+  (loop for mode in (editor-modes editor)
+        when (handle-key mode editor key ctrl alt shift meta)
+        return t
+        finally (return nil)))
 
 (defun get-modeline-info (editor)
   "Get modeline information (filename, line, column) for the current buffer."
@@ -106,6 +115,7 @@
   "Create a REPL editor with an empty buffer."
   (let ((e (make-instance 'repl-editor)))
     (setf (buffers e) (list (make-empty-buffer "*repl*")))
+    (setf (editor-modes e) (list (make-repl-mode) (make-normal-mode)))
     e))
 
 (defmethod render ((editor repl-editor) (ui ui-implementation))

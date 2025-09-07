@@ -13,6 +13,8 @@
 	       ;; interface
                (:file "ui") ;; ui toolkit
                (:file "buffer") ;; a list of lines of text
+               (:file "normal-mode") ;; normal editing mode
+               (:file "repl-mode") ;; repl editing mode
                (:file "editor") ;; total editor state. list of buffers and windows.
                (:file "frame") ;; a frame displayed by the ui
                (:file "view") ;; a buffer with scroll position, point/mark
