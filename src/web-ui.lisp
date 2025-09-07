@@ -545,6 +545,11 @@
                 if (data.type === 'update') {
                     document.getElementById('app-container').innerHTML = data.content;
                     initializeWindows();
+                    
+                    // Auto-scroll all rich-object-view-content areas to bottom
+                    document.querySelectorAll('.rich-object-view-content').forEach(content => {
+                        content.scrollTop = content.scrollHeight;
+                    });
                 }
             };
             
